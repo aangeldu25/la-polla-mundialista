@@ -1,0 +1,20 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Avatars: nombre del archivo empieza con el uid del usuario
+    // (ej: "miuid.jpg"). Lectura pública, escritura solo del dueño.
+    match /avatars/{filename} {
+      allow read: if true;
+      allow write: if isSignedIn()
+        && filename.matches(request.auth.uid + '\\..*')
+        && request.resource.size < 5 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+  }
+}

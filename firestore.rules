@@ -1,0 +1,136 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    function isAdmin() {
+      return isSignedIn() &&
+        request.auth.token.email == 'aangeldu@gmail.com';
+    }
+
+    // Perfiles de usuario
+    // - Lectura: cualquier autenticado (para ranking y "chisme")
+    // - Create: el dueño, con uid coincidente
+    // - Update: el dueño, sin modificar puntos ni flag de admin
+    match /users/{uid} {
+      allow read: if isSignedIn();
+      allow create: if isOwner(uid)
+        && request.resource.data.uid == uid;
+      // El usuario puede actualizar su perfil pero no puede tocar puntos
+      // ni la marca de admin. Marcar tutorialCompleted SÍ es permitido.
+      allow update: if isOwner(uid)
+        && request.resource.data.totalPoints == resource.data.totalPoints
+        && request.resource.data.exactScoreHits == resource.data.exactScoreHits
+        && request.resource.data.winnerHits == resource.data.winnerHits
+        && request.resource.data.isAdmin == resource.data.isAdmin
+        && (
+          !('structurePointsByRound' in request.resource.data)
+          || request.resource.data.structurePointsByRound ==
+             resource.data.get('structurePointsByRound', null)
+        );
+      allow delete: if false;
+    }
+
+    // Equipos - lectura pública, escritura solo Admin SDK
+    match /teams/{teamId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
+    // Partidos - lectura para autenticados, escritura solo Admin SDK
+    match /matches/{matchId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
+    // Predicciones de partido - todos las ven (chisme)
+    // Solo el dueño puede crear/editar, sin tocar puntos
+    match /predictions/{predictionId} {
+      allow read: if isSignedIn();
+      allow create: if isOwner(request.resource.data.uid)
+        && request.resource.data.pointsAwarded == null;
+      allow update: if isOwner(resource.data.uid)
+        && resource.data.uid == request.resource.data.uid
+        && request.resource.data.pointsAwarded == resource.data.pointsAwarded;
+      allow delete: if false;
+    }
+
+    // Quinielas especiales - una por usuario (docId == uid)
+    match /specialPredictions/{uid} {
+      allow read: if isSignedIn();
+      allow create, update: if isOwner(uid)
+        && request.resource.data.uid == uid
+        && request.resource.data.pointsAwarded == 0;
+      allow delete: if false;
+    }
+
+    // Resultados finales del torneo - lectura para todos los autenticados
+    // (para que el cliente derive el Top 3 al mostrar el chisme final).
+    // Escritura solo Admin SDK desde /api/admin/finalize-tournament.
+    match /tournament/{docId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
+    // Meta (último sync de fixture, etc.) — lectura para admin
+    match /meta/{docId} {
+      allow read: if isSignedIn();
+      allow write: if false; // solo Admin SDK
+    }
+
+    // ===== Multi-tenancy: pollas y membresías =====
+
+    // Pollas (grupos). Lectura para autenticados (necesario para resolver
+    // códigos de invitación). Creación por el dueño declarado; el creador
+    // no puede falsear memberCount inicial ni ownerUid.
+    match /pollas/{pollaId} {
+      allow read: if isSignedIn();
+      allow create: if isOwner(request.resource.data.ownerUid)
+        && request.resource.data.memberCount == 1
+        && request.resource.data.name is string
+        && request.resource.data.name.size() >= 3
+        && request.resource.data.name.size() <= 40
+        && request.resource.data.inviteCode is string;
+      // Updates: solo el owner puede renombrar; memberCount se actualiza en
+      // transacciones de join/leave (cualquier miembro autenticado), pero
+      // solo en ±1 y sin tocar el resto de campos.
+      allow update: if isSignedIn()
+        && request.resource.data.ownerUid == resource.data.ownerUid
+        && request.resource.data.inviteCode == resource.data.inviteCode
+        && (
+          // owner renombrando o cambiando emoji
+          (request.auth.uid == resource.data.ownerUid
+            && request.resource.data.memberCount == resource.data.memberCount)
+          ||
+          // join/leave: solo memberCount ±1
+          (request.resource.data.name == resource.data.name
+            && request.resource.data.emoji == resource.data.emoji
+            && (request.resource.data.memberCount == resource.data.memberCount + 1
+              || request.resource.data.memberCount == resource.data.memberCount - 1))
+        );
+      allow delete: if false; // borrado vía Admin SDK si hace falta
+    }
+
+    // Membresías (flat: id = pollaId_uid). El usuario solo puede crear/borrar
+    // SU propia membresía. role "owner" solo al crear la polla.
+    match /memberships/{membershipId} {
+      allow read: if isSignedIn();
+      allow create: if isOwner(request.resource.data.uid)
+        && membershipId == request.resource.data.pollaId + '_' + request.resource.data.uid
+        && (request.resource.data.role == 'member'
+          || (request.resource.data.role == 'owner'
+            && getAfter(/databases/$(database)/documents/pollas/$(request.resource.data.pollaId)).data.ownerUid == request.auth.uid));
+      allow update: if false;
+      allow delete: if isOwner(resource.data.uid)
+        && resource.data.role != 'owner';
+    }
+  }
+}
