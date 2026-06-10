@@ -1,6 +1,6 @@
 import { Resend } from "resend";
 
-const APP_URL = "https://polla-mundialista-familia-unida.vercel.app";
+const APP_URL = "https://la-polla-mundialista-2026-seven.vercel.app";
 
 function getResend(): Resend | null {
   const apiKey = process.env.RESEND_API_KEY;

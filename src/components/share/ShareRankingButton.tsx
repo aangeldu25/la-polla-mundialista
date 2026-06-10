@@ -4,7 +4,7 @@ import { useState } from "react";
 import { fireConfetti } from "@/lib/festive/confetti";
 import type { UserProfile } from "@/types/domain";
 
-const APP_URL = "https://polla-mundialista-familia-unida.vercel.app";
+const APP_URL = "https://la-polla-mundialista-2026-seven.vercel.app";
 
 export function ShareRankingButton({
   ranked,

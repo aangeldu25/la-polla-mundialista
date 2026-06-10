@@ -7,7 +7,7 @@ import { venueForMatch } from "@/lib/constants/wc2026-fixture-venues";
 import { STAGE_LABEL_ES } from "@/lib/constants/stages";
 import { BRACKET_BY_MATCH_NUMBER } from "@/lib/constants/wc2026-bracket";
 
-const APP_URL = "https://polla-mundialista-familia-unida.vercel.app";
+const APP_URL = "https://la-polla-mundialista-2026-seven.vercel.app";
 
 function fmtUtc(d: Date): string {
   return d.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";

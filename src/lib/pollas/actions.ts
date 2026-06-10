@@ -175,6 +175,6 @@ export function inviteLink(polla: Polla): string {
   const base =
     typeof window !== "undefined"
       ? window.location.origin
-      : "https://polla-publica.vercel.app";
+      : "https://la-polla-mundialista-2026-seven.vercel.app";
   return `${base}/unirse/${polla.inviteCode}`;
 }

@@ -17,7 +17,7 @@ function resolveAuthDomain(): string {
   if (typeof window !== "undefined") return window.location.host;
   return (
     process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN ??
-    "polla-mundialista-familia-unida.vercel.app"
+    "la-polla-mundialista-2026-seven.vercel.app"
   );
 }
 
