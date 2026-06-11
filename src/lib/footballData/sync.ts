@@ -218,6 +218,21 @@ export async function syncFixture(): Promise<SyncResult> {
         updatedAt: now,
       };
 
+      // No pisar datos en vivo más frescos del overlay (FIFA/API-Football):
+      // si Football-Data trae score null pero el doc ya tiene marcador (y
+      // estado LIVE/FINISHED), conservamos lo existente. Football-Data free
+      // tier llega tarde — el overlay es la fuente fresca de score/estado.
+      if (
+        prev &&
+        next.score.homeFullTime === null &&
+        prev.score.homeFullTime !== null &&
+        (prev.status === "LIVE" || prev.status === "FINISHED")
+      ) {
+        next.score = prev.score;
+        next.status = prev.status;
+        next.liveMinute = prev.liveMinute ?? null;
+      }
+
       // Preservar la marca de puntos calculados (set() reemplaza el doc)
       batch.set(ref, {
         ...next,
