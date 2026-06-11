@@ -8,7 +8,7 @@ import { z } from "zod";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
-import { resetPassword } from "@/lib/auth/actions";
+import { requestPasswordReset } from "@/lib/notifications/client";
 
 const schema = z.object({
   email: z.email("Correo inválido"),
@@ -29,7 +29,7 @@ export default function RecuperarPage() {
   async function onSubmit(data: FormData) {
     setError(null);
     try {
-      await resetPassword(data.email);
+      await requestPasswordReset(data.email);
       setSentTo(data.email);
     } catch (e) {
       const err = e as { code?: string; message?: string };
@@ -51,7 +51,7 @@ export default function RecuperarPage() {
           />
           <ol className="text-sm text-gray-900 space-y-3 list-decimal pl-5 mt-4">
             <li>
-              Abre el correo de <strong>Firebase Auth</strong> (revisa también
+              Abre el correo de <strong>La Polla Mundialista</strong> (revisa también
               la carpeta de Spam si no lo ves en la bandeja principal).
             </li>
             <li>

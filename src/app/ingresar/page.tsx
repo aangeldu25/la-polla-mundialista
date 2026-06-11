@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { FullScreenLoader } from "@/components/ui/BallLoader";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -28,6 +29,7 @@ export default function IngresarPage() {
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [loadingGoogle, setLoadingGoogle] = useState(false);
+  const [redirecting, setRedirecting] = useState(false);
 
   const {
     register,
@@ -40,6 +42,7 @@ export default function IngresarPage() {
     setInfo(null);
     try {
       await loginWithEmail(data.email, data.password);
+      setRedirecting(true);
       router.push("/dashboard");
     } catch (e) {
       const err = e as { code?: string; message?: string };
@@ -65,6 +68,7 @@ export default function IngresarPage() {
         displayName: user.displayName ?? "Mundialista",
         photoURL: user.photoURL,
       });
+      setRedirecting(true);
       router.push("/dashboard");
     } catch (e) {
       const err = e as { message?: string };
@@ -72,6 +76,10 @@ export default function IngresarPage() {
     } finally {
       setLoadingGoogle(false);
     }
+  }
+
+  if (redirecting) {
+    return <FullScreenLoader message="Entrando a la cancha..." />;
   }
 
   return (

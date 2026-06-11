@@ -3,6 +3,7 @@
 import { useEffect, type ReactNode } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "./AuthProvider";
+import { FullScreenLoader } from "@/components/ui/BallLoader";
 
 export function AuthGuard({ children }: { children: ReactNode }) {
   const { user, profile, loading, needsOnboarding, error } = useAuth();
@@ -41,12 +42,10 @@ export function AuthGuard({ children }: { children: ReactNode }) {
   }
 
   if (loading) {
-    return (
-      <div className="flex-1 flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-[var(--pmfu-cobalt)] border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
+    return <FullScreenLoader message="Calentando motores..." />;
   }
-  if (!user) return null;
+  // Mientras el redirect a /ingresar ocurre, mostramos el balón en vez de
+  // una pantalla congelada en blanco.
+  if (!user) return <FullScreenLoader message="Un momento..." />;
   return <>{children}</>;
 }

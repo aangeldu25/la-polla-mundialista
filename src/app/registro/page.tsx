@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { sendWelcomeEmail } from "@/lib/notifications/client";
+import { FullScreenLoader } from "@/components/ui/BallLoader";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -28,6 +30,7 @@ export default function RegistroPage() {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [loadingGoogle, setLoadingGoogle] = useState(false);
+  const [redirecting, setRedirecting] = useState(false);
 
   const {
     register,
@@ -38,7 +41,9 @@ export default function RegistroPage() {
   async function onSubmit(data: FormData) {
     setError(null);
     try {
-      await registerWithEmail(data.email, data.password, data.displayName);
+      const newUser = await registerWithEmail(data.email, data.password, data.displayName);
+      void sendWelcomeEmail(newUser);
+      setRedirecting(true);
       // Email de confirmación enviado dentro de registerWithEmail.
       router.push("/onboarding?welcome=1");
     } catch (e) {
@@ -65,6 +70,8 @@ export default function RegistroPage() {
         displayName: user.displayName ?? "Mundialista",
         photoURL: user.photoURL,
       });
+      void sendWelcomeEmail(user);
+      setRedirecting(true);
       router.push("/onboarding");
     } catch (e) {
       const err = e as { message?: string };
@@ -72,6 +79,10 @@ export default function RegistroPage() {
     } finally {
       setLoadingGoogle(false);
     }
+  }
+
+  if (redirecting) {
+    return <FullScreenLoader message="Entrando a la cancha..." />;
   }
 
   return (

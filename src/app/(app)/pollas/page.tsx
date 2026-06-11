@@ -12,6 +12,7 @@ import {
   inviteLink,
 } from "@/lib/pollas/actions";
 import type { Polla } from "@/types/domain";
+import { sendPollaCreatedEmail } from "@/lib/notifications/client";
 import { cn } from "@/lib/utils";
 
 const EMOJIS = ["🏆", "⚽", "🎉", "🔥", "🦁", "🌟", "🍀", "👑"];
@@ -37,6 +38,7 @@ export default function PollasPage() {
     setMsg(null);
     try {
       const polla = await createPolla({ uid: user.uid, name, emoji });
+      void sendPollaCreatedEmail(user, polla);
       setActivePollaId(polla.id);
       setName("");
       setCreating(false);
