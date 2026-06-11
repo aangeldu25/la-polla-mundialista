@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { syncFixture } from "@/lib/footballData/sync";
+import { overlayLiveScores } from "@/lib/liveScores/overlay";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -15,7 +16,16 @@ export async function GET(req: Request) {
   }
   try {
     const result = await syncFixture();
-    return NextResponse.json({ ok: true, ...result });
+    // Overlay de marcadores en vivo (FIFA primario, API-Football backup).
+    // Football-Data del paso anterior sigue siendo la fuente del fixture;
+    // esto solo refresca marcador/estado/minuto de los partidos del día.
+    let liveOverlay = null;
+    try {
+      liveOverlay = await overlayLiveScores();
+    } catch (e) {
+      console.error("[sync-fixture] overlay error:", e);
+    }
+    return NextResponse.json({ ok: true, ...result, liveOverlay });
   } catch (e) {
     const err = e as Error;
     console.error("[sync-fixture] error:", err);
