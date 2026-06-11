@@ -101,14 +101,53 @@ const STEPS: Step[] = [
         <li>🌟 <strong>Balón de Oro:</strong> 8 puntos</li>
         <li>🧤 <strong>Guante de Oro:</strong> 6 puntos</li>
         <li className="text-xs text-gray-700 pt-1 border-t border-gray-200 mt-2">
-          El Top 3 sale automáticamente de tus predicciones a los partidos 103
-          y 104.
+          El Top 3 sale automáticamente de tus predicciones del bracket
+          (partidos 103 y 104). El{" "}
+          <strong className="text-gray-900">
+            11 de junio de 2026 a las 4:00 p.m. (hora Colombia)
+          </strong>{" "}
+          se toma una &quot;foto&quot; de tu Top 3 y queda congelado para la
+          premiación — aunque después sigas ajustando marcadores de
+          eliminatorias, tu Top 3 de quiniela ya no cambia.
         </li>
       </ul>
     ),
   },
   {
-    title: "Las 4 secciones de la app",
+    title: "Crea tu polla e invita a tu gente",
+    body: (
+      <>
+        <p className="text-sm text-gray-800">
+          Una <strong className="text-gray-900">polla</strong> es tu grupo
+          privado: familia, amigos, oficina... En la sección{" "}
+          <strong className="text-gray-900">👥 Mis pollas</strong> puedes:
+        </p>
+        <ul className="text-sm text-gray-800 space-y-2 mt-3">
+          <li>
+            ➕ <strong className="text-gray-900">Crear una polla</strong> con
+            nombre y emoji — obtienes un{" "}
+            <strong className="text-gray-900">link de invitación</strong> para
+            compartir por WhatsApp.
+          </li>
+          <li>
+            🎟️ <strong className="text-gray-900">Unirte</strong> a la polla de
+            alguien más con su link o código.
+          </li>
+          <li>
+            🔄 Puedes estar en{" "}
+            <strong className="text-gray-900">varias pollas a la vez</strong>:
+            predices una sola vez y tus puntos cuentan en todas.
+          </li>
+        </ul>
+        <p className="text-xs text-gray-700 mt-3 pt-2 border-t border-gray-200">
+          El Ranking y las predicciones de los demás se muestran según la
+          polla que tengas activa.
+        </p>
+      </>
+    ),
+  },
+  {
+    title: "Las secciones de la app",
     body: (
       <ul className="text-sm text-gray-800 space-y-2.5">
         <li>
@@ -125,7 +164,11 @@ const STEPS: Step[] = [
         </li>
         <li>
           <strong className="text-gray-900">📊 Ranking:</strong> tabla de
-          posiciones de la familia.
+          posiciones de tu polla activa.
+        </li>
+        <li>
+          <strong className="text-gray-900">👥 Mis pollas:</strong> crea
+          grupos, comparte links de invitación y cambia de polla.
         </li>
       </ul>
     ),
@@ -142,11 +185,12 @@ const STEPS: Step[] = [
           . Cuando suena el pitazo inicial, tu marcador queda bloqueado.
         </p>
         <p className="text-sm text-gray-800 mt-3">
-          Las quinielas extras se cierran al{" "}
+          Las quinielas extras (Top 3 + premios individuales) se cierran el{" "}
           <strong className="text-gray-900">
-            kickoff del partido inaugural
+            11 de junio de 2026 a las 4:00 p.m. hora Colombia
           </strong>{" "}
-          (11 de junio 2026, 4:00 p.m. hora Colombia).
+          (kickoff del partido inaugural). En ese momento tu Top 3 queda
+          congelado tal como esté tu bracket.
         </p>
       </>
     ),
