@@ -203,6 +203,7 @@ export async function syncFixture(): Promise<SyncResult> {
           awayPenalties: m.score.penalties?.away ?? null,
           winner: m.score.winner ?? null,
         },
+        liveMinute: newStatus === 'LIVE' ? (m.minute ?? null) : null,
         updatedAt: now,
       };
 

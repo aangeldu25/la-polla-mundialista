@@ -65,6 +65,8 @@ export interface Match {
     awayPenalties?: number | null;
     winner?: "HOME_TEAM" | "AWAY_TEAM" | "DRAW" | null;
   };
+  // Minuto de juego cuando el partido esta LIVE (si la API lo provee)
+  liveMinute?: number | string | null;
   updatedAt: string;
 }
 

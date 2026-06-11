@@ -49,6 +49,9 @@ export interface FDMatch {
   score: FDScore;
   venue?: string | null;
   lastUpdated?: string;
+  // Minuto de juego — presente solo cuando status es IN_PLAY
+  minute?: number | string | null;
+  injuryTime?: number | null;
 }
 
 export interface FDMatchesResponse {

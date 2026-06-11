@@ -90,7 +90,7 @@ export function MatchCard({
           )}
         >
           {live ? (
-            "🔴 EN VIVO"
+            match.liveMinute != null && match.liveMinute !== "" ? `🔴 EN VIVO · ${match.liveMinute}'` : "🔴 EN VIVO"
           ) : finished ? (
             "Terminado"
           ) : (
