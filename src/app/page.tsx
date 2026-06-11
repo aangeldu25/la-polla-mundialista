@@ -18,13 +18,13 @@ export default function HomePage() {
           Polla Mundialista
           <br />
           <span className="bg-gradient-to-r from-[var(--pmfu-cobalt)] via-[var(--pmfu-magenta)] to-[var(--pmfu-orange)] bg-clip-text text-transparent">
-            Polla Mundialista 2026
+            2026
           </span>
         </h1>
 
         <p className="mt-6 text-lg md:text-xl text-gray-800 max-w-xl">
-          Predice cada partido, compite con la familia y celebra cada gol. La
-          polla del Mundial 2026, hecha en casa.
+          Predice cada partido, crea tu polla con familia, amigos o trabajo y
+          celebra cada gol del Mundial 2026.
         </p>
 
         <div className="mt-10 flex flex-col sm:flex-row gap-3">
@@ -43,8 +43,12 @@ export default function HomePage() {
         </div>
 
         <p className="mt-8 text-xs text-gray-700">
-          App familiar sin afiliación oficial con FIFA. Datos de partidos
-          provistos por Football-Data.org.
+          App sin afiliación oficial con FIFA. Datos de partidos provistos por
+          Football-Data.org.
+        </p>
+        <p className="mt-2 text-[11px] text-gray-400 font-medium">
+          Creado por <span className="font-semibold text-gray-500">aangeldu</span>{" "}
+          para los amantes del fútbol ⚽
         </p>
       </div>
     </main>
