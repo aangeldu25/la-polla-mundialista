@@ -43,6 +43,22 @@ export async function scoreMatch(
       reason: "not-finished",
     };
   }
+  // Football-Data a veces marca FINISHED antes de publicar el marcador.
+  // Sin marcador no se puede puntuar — saltamos SIN marcar pointsCalculated
+  // para que el siguiente sync lo reintente cuando el score llegue.
+  if (
+    match.score.homeFullTime === null ||
+    match.score.awayFullTime === null
+  ) {
+    return {
+      matchId,
+      predictions: 0,
+      uniqueUsers: 0,
+      totalPointsAwarded: 0,
+      skipped: true,
+      reason: 'no-score-yet',
+    };
+  }
   if (match.pointsCalculated && !options.force) {
     return {
       matchId,

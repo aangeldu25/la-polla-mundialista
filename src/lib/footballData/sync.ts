@@ -158,8 +158,19 @@ export async function syncFixture(): Promise<SyncResult> {
       // Las sedes se resuelven 100% en el cliente vía venueForMatch(matchNumber),
       // así que no escribimos venue/city/country a Firestore — ahorra writes.
 
-      const prev = prevById.get(id);
-      if (prev && prev.status !== "FINISHED" && newStatus === "FINISHED") {
+      const prev = prevById.get(id) as
+        | (Match & { pointsCalculated?: boolean })
+        | undefined;
+      // Disparar scoring cuando el partido está FINISHED con marcador real y
+      // aún no se han calculado puntos. Cubre el caso de Football-Data que
+      // marca FINISHED con score null y publica el marcador después.
+      const hasScoreNow =
+        m.score.fullTime?.home != null && m.score.fullTime?.away != null;
+      if (
+        newStatus === "FINISHED" &&
+        hasScoreNow &&
+        (!prev || prev.status !== "FINISHED" || !prev.pointsCalculated)
+      ) {
         finalizedNow.push(id);
       }
 
@@ -207,7 +218,11 @@ export async function syncFixture(): Promise<SyncResult> {
         updatedAt: now,
       };
 
-      batch.set(ref, next);
+      // Preservar la marca de puntos calculados (set() reemplaza el doc)
+      batch.set(ref, {
+        ...next,
+        pointsCalculated: prev?.pointsCalculated ?? false,
+      });
       if (prev) updated++;
       else created++;
 
