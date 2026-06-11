@@ -18,7 +18,7 @@ export default function HomePage() {
           Polla Mundialista
           <br />
           <span className="bg-gradient-to-r from-[var(--pmfu-cobalt)] via-[var(--pmfu-magenta)] to-[var(--pmfu-orange)] bg-clip-text text-transparent">
-            La Polla
+            Polla Mundialista 2026
           </span>
         </h1>
 

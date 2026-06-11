@@ -74,7 +74,7 @@ export function TestReminderSection() {
         📧 Probar email de recordatorio
       </h2>
       <p className="text-sm text-gray-800 font-medium mb-4">
-        Envía el email de recordatorio (la plantilla real con branding PMFU)
+        Envía el email de recordatorio (la plantilla real con branding Polla Mundialista 2026)
         usando los datos de un partido que elijas. No modifica nada en
         Firestore ni dispara el cron real — solo el envío.
       </p>

@@ -25,7 +25,7 @@ export function ShareRankingButton({
 
   function buildText() {
     const total = ranked.length;
-    return `${medal} La Polla Mundialista — Mundial 2026
+    return `${medal} Polla Mundialista 2026 — Mundial 2026
 
 Voy en el puesto ${myRank} de ${total} con ${me!.totalPoints} puntos
 🎯 ${me!.exactScoreHits} marcadores exactos
@@ -42,7 +42,7 @@ ${myRank === 1 ? "¡Voy primero! 🥇" : myRank <= 3 ? "¡En el podio! 💪" : "
     if (typeof navigator !== "undefined" && navigator.share) {
       try {
         await navigator.share({
-          title: "Mi posición en PMFU",
+          title: "Mi posición en la Polla Mundialista 2026",
           text,
         });
         fireConfetti("small");

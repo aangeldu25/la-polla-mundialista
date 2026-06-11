@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
         if (!to) return NextResponse.json({ ok: false }, { status: 400 });
         const result = await sendEmail({
           to,
-          subject: "¡Bienvenido a La Polla Mundialista! ⚽",
+          subject: "¡Bienvenido a Polla Mundialista 2026! ⚽",
           html: buildWelcomeEmailHtml({
             userName: body.userName || "Mundialista",
           }),
@@ -79,7 +79,7 @@ export async function POST(req: NextRequest) {
           const resetLink = await adminAuth.generatePasswordResetLink(email);
           await sendEmail({
             to: email,
-            subject: "Restablece tu contraseña — La Polla Mundialista",
+            subject: "Restablece tu contraseña — Polla Mundialista 2026",
             html: buildPasswordResetEmailHtml({ resetLink }),
           });
         } catch {

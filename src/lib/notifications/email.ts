@@ -25,7 +25,7 @@ export async function sendEmail(params: {
 
   const from =
     process.env.RESEND_FROM ??
-    "PMFU <onboarding@resend.dev>"; // Default funciona sin verificar dominio
+    "Polla Mundialista 2026 <onboarding@resend.dev>"; // Default funciona sin verificar dominio
 
   try {
     const result = await resend.emails.send({
@@ -57,13 +57,13 @@ export function buildReminderEmailHtml(params: {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Predicción pendiente — PMFU</title>
+<title>Predicción pendiente — Polla Mundialista 2026</title>
 </head>
 <body style="margin:0;padding:0;background:#f7f8fb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
   <div style="max-width:480px;margin:0 auto;padding:24px 12px;">
     <div style="background:#fff;border-radius:24px;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,0.05);">
       <div style="background:linear-gradient(135deg,#0033a0 0%,#e6007e 50%,#ff7a1a 100%);padding:28px 24px;color:white;text-align:center;">
-        <p style="margin:0;font-size:11px;letter-spacing:3px;text-transform:uppercase;font-weight:700;opacity:0.85;">PMFU · Mundial 2026</p>
+        <p style="margin:0;font-size:11px;letter-spacing:3px;text-transform:uppercase;font-weight:700;opacity:0.85;">⚽ Polla Mundialista 2026</p>
         <h1 style="margin:8px 0 0;font-size:22px;font-weight:800;">⚡ Tu partido empieza en 30 minutos</h1>
       </div>
       <div style="padding:24px;color:#0a1a3a;">
@@ -80,7 +80,7 @@ export function buildReminderEmailHtml(params: {
         </p>
       </div>
       <div style="padding:18px 24px;background:#fafbff;border-top:1px solid #e5e7eb;text-align:center;color:#666;font-size:12px;">
-        <strong style="color:#0033a0;">La Polla Mundialista</strong><br>
+        <strong style="color:#0033a0;">Polla Mundialista 2026</strong><br>
         <span style="opacity:0.8;">Recibes este correo porque tienes notificaciones activadas.</span>
       </div>
     </div>
@@ -125,7 +125,7 @@ function baseTemplate(params: {
   <div style="max-width:480px;margin:0 auto;padding:24px 12px;">
     <div style="background:#fff;border-radius:24px;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,0.05);">
       <div style="background:linear-gradient(135deg,#0033a0 0%,#e6007e 50%,#ff7a1a 100%);padding:28px 24px;color:white;text-align:center;">
-        <p style="margin:0;font-size:11px;letter-spacing:3px;text-transform:uppercase;font-weight:700;opacity:0.85;">⚽ La Polla Mundialista · 2026</p>
+        <p style="margin:0;font-size:11px;letter-spacing:3px;text-transform:uppercase;font-weight:700;opacity:0.85;">⚽ Polla Mundialista 2026</p>
         <h1 style="margin:8px 0 0;font-size:22px;font-weight:800;">${escapeHtml(params.headline)}</h1>
       </div>
       <div style="padding:24px;color:#0a1a3a;">
@@ -133,7 +133,7 @@ function baseTemplate(params: {
         ${cta}
       </div>
       <div style="padding:18px 24px;background:#fafbff;border-top:1px solid #e5e7eb;text-align:center;color:#666;font-size:12px;">
-        <strong style="color:#0033a0;">La Polla Mundialista</strong><br>
+        <strong style="color:#0033a0;">Polla Mundialista 2026</strong><br>
         <span style="opacity:0.8;">${escapeHtml(params.footerNote ?? "El Mundial 2026 se vive mejor compitiendo.")}</span>
       </div>
     </div>
@@ -148,7 +148,7 @@ export function buildWelcomeEmailHtml(params: { userName: string }): string {
     preheader: "Tu cuenta está lista. ¡A predecir!",
     headline: `¡Bienvenido, ${params.userName}! 🎉`,
     bodyHtml: `
-      <p style="margin:0 0 14px;font-size:16px;">Tu cuenta en <strong>La Polla Mundialista</strong> quedó lista.</p>
+      <p style="margin:0 0 14px;font-size:16px;">Tu cuenta en <strong>Polla Mundialista 2026</strong> quedó lista.</p>
       <p style="margin:0 0 10px;font-size:15px;color:#333;">Ahora sigue lo divertido:</p>
       <ul style="margin:0 0 8px;padding-left:20px;font-size:15px;color:#333;line-height:1.7;">
         <li>📝 Predice los marcadores de los 104 partidos</li>
@@ -190,7 +190,7 @@ export function buildPasswordResetEmailHtml(params: {
   resetLink: string;
 }): string {
   return baseTemplate({
-    preheader: "Restablece tu contraseña de La Polla Mundialista",
+    preheader: "Restablece tu contraseña de Polla Mundialista 2026",
     headline: "Recupera tu acceso 🔑",
     bodyHtml: `
       <p style="margin:0 0 14px;font-size:16px;">Recibimos una solicitud para restablecer tu contraseña.</p>

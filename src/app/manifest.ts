@@ -2,10 +2,10 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "La Polla Mundialista",
-    short_name: "LaPolla",
+    name: "Polla Mundialista 2026",
+    short_name: "Polla 2026",
     description:
-      "Polla del Mundial 2026 — La Polla. Predice, compite y celebra.",
+      "Polla del Mundial 2026. Predice, compite y celebra con tu grupo.",
     start_url: "/dashboard",
     display: "standalone",
     background_color: "#f7f8fb",

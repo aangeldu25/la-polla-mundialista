@@ -10,11 +10,11 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: "La Polla Mundialista",
+  title: "Polla Mundialista 2026",
   description:
-    "La polla del Mundial 2026 para la La Polla. Predice, compite y celebra.",
-  applicationName: "LaPolla",
-  authors: [{ name: "La Polla" }],
+    "La polla del Mundial 2026 para jugar con tu gente. Predice, compite y celebra.",
+  applicationName: "Polla 2026",
+  authors: [{ name: "Polla Mundialista 2026" }],
   icons: {
     icon: "/favicon.ico",
   },

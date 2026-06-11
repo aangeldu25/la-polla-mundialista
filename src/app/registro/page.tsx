@@ -90,7 +90,7 @@ export default function RegistroPage() {
       <Card className="max-w-md">
         <CardHeader
           title="Crear cuenta"
-          subtitle="Únete a la La Polla Mundialista."
+          subtitle="Únete a la Polla Mundialista 2026."
         />
 
         <GoogleButton onClick={handleGoogle} loading={loadingGoogle} />

@@ -51,7 +51,7 @@ export default function RecuperarPage() {
           />
           <ol className="text-sm text-gray-900 space-y-3 list-decimal pl-5 mt-4">
             <li>
-              Abre el correo de <strong>La Polla Mundialista</strong> (revisa también
+              Abre el correo de <strong>Polla Mundialista 2026</strong> (revisa también
               la carpeta de Spam si no lo ves en la bandeja principal).
             </li>
             <li>

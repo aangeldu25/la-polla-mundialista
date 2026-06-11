@@ -46,7 +46,7 @@ export function Navbar() {
     <header className="pmfu-glass sticky top-0 z-30 px-4 md:px-8 py-3 flex items-center justify-between border-b border-gray-200/40">
       <Link href="/dashboard" className="flex items-center gap-2">
         <span className="text-lg font-bold tracking-tight bg-gradient-to-r from-[var(--pmfu-cobalt)] via-[var(--pmfu-magenta)] to-[var(--pmfu-orange)] bg-clip-text text-transparent">
-          PMFU
+          Polla Mundialista 2026
         </span>
         <span className="hidden md:inline text-xs uppercase tracking-widest text-gray-700 font-semibold">
           Mundial 2026
