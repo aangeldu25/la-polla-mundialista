@@ -80,7 +80,8 @@ export default function DashboardPage() {
       possibleWinners += 1;
       earnedPoints += pred.pointsAwarded ?? 0;
       if (pred.isExact) earnedExacts += 1;
-      else if (pred.isWinnerCorrect) earnedWinners += 1;
+      // Inclusivo: acertar el marcador exacto implica acertar el ganador
+      if (pred.isExact || pred.isWinnerCorrect) earnedWinners += 1;
     }
 
     return {

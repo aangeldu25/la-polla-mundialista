@@ -74,11 +74,11 @@ export default function RankingPage() {
             acertaste el marcador completo (vale más puntos).
           </p>
           <p>
-            <strong className="text-gray-900">Ganadores:</strong> partidos
+            <strong className="text-gray-900">Sólo ganador:</strong> partidos
             donde acertaste solo quién ganó (sin el marcador exacto).
           </p>
           <p className="pt-1 text-[10px] text-gray-600 border-t border-gray-200 mt-2">
-            Desempates: 1) puntos · 2) exactos · 3) ganadores · 4) fecha de
+            Desempates: 1) puntos · 2) exactos · 3) sólo ganador · 4) fecha de
             registro
           </p>
         </div>
@@ -179,7 +179,7 @@ function RankRow({
             </strong>
           </span>
           <span>
-            <span className="text-gray-600">Ganadores </span>
+            <span className="text-gray-600">Sólo ganador </span>
             <strong className="text-gray-900 tabular-nums">
               {profile.winnerHits ?? 0}
             </strong>
