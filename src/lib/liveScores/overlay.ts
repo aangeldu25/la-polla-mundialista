@@ -95,11 +95,10 @@ export async function overlayLiveScores(): Promise<OverlayResult> {
   }
 
   // 2) Pedir datos: FIFA primero, API-Football si falla.
-  // FIFA rechaza fechas con milisegundos — las recortamos a segundos.
-  const cleanIso = (ms: number) =>
-    new Date(ms).toISOString().replace(/\.\d{3}Z$/, "Z");
-  const fromIso = cleanIso(fromMs - 2 * 3600_000);
-  const toIso = cleanIso(toMs + 2 * 3600_000);
+  // FIFA solo acepta fechas redondas — usamos YYYY-MM-DD (día completo).
+  const dateOnly = (ms: number) => new Date(ms).toISOString().slice(0, 10);
+  const fromIso = dateOnly(fromMs - 24 * 3600_000);
+  const toIso = dateOnly(toMs + 24 * 3600_000);
   let result = await fetchFifaLiveScores({ fromIso, toIso });
   if (!result.ok || result.scores.length === 0) {
     const dates = Array.from(
