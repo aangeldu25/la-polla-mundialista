@@ -194,10 +194,22 @@ export default function PartidosPage() {
       arr.push(m);
       map.set(m.stage, arr);
     }
-    return [...map.entries()].sort(
-      ([a], [b]) => STAGE_ORDER[a] - STAGE_ORDER[b],
+    // En "Terminados" mostramos del más reciente al más antiguo: invertimos el
+    // orden de las etapas y los partidos dentro de cada etapa.
+    const reverse = filter === "FINISHED";
+    const entries = [...map.entries()].sort(
+      ([a], [b]) =>
+        reverse
+          ? STAGE_ORDER[b] - STAGE_ORDER[a]
+          : STAGE_ORDER[a] - STAGE_ORDER[b],
     );
-  }, [filtered]);
+    if (reverse) {
+      for (const [, arr] of entries) {
+        arr.sort((a, b) => b.utcDate.localeCompare(a.utcDate));
+      }
+    }
+    return entries;
+  }, [filtered, filter]);
 
   const pendingCount = useMemo(
     () =>
