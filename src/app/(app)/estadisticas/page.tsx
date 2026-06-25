@@ -856,21 +856,37 @@ function GoalGemsBlock({ gems }: { gems: GoalGems }) {
       <p className="text-[11px] font-bold uppercase tracking-wide text-gray-500 mb-2">
         ¿Cuándo caen los goles?
       </p>
-      <div className="flex items-end gap-1.5 h-24 mb-1">
-        {gems.minuteBuckets.map((n, i) => (
-          <div key={i} className="flex-1 flex flex-col items-center gap-1">
-            <span className="text-[10px] font-bold text-gray-700 tabular-nums">
-              {n}
-            </span>
+      <div className="flex items-end gap-1.5 h-32 mb-1">
+        {gems.minuteBuckets.map((n, i) => {
+          const pct = maxBucket > 0 ? (n / maxBucket) * 100 : 0;
+          const totalGoals = gems.minuteBuckets.reduce((s, v) => s + v, 0);
+          const share = totalGoals > 0 ? Math.round((n / totalGoals) * 100) : 0;
+          const isTallest = n === maxBucket && n > 0;
+          return (
             <div
-              className={cn(
-                "w-full rounded-t",
-                i === 6 ? "bg-[var(--pmfu-magenta)]" : "bg-[var(--pmfu-cobalt)]",
-              )}
-              style={{ height: `${Math.max((n / maxBucket) * 100, 3)}%` }}
-            />
-          </div>
-        ))}
+              key={i}
+              className="flex-1 h-full flex flex-col justify-end items-center"
+            >
+              <span className="text-[11px] font-bold text-gray-900 tabular-nums leading-none">
+                {n}
+              </span>
+              <span className="text-[8px] text-gray-400 tabular-nums leading-none mb-1">
+                {share}%
+              </span>
+              <div
+                className={cn(
+                  "w-full rounded-t transition-all",
+                  i === 6
+                    ? "bg-[var(--pmfu-magenta)]"
+                    : isTallest
+                      ? "bg-[var(--pmfu-cobalt)]"
+                      : "bg-[var(--pmfu-cobalt)]/70",
+                )}
+                style={{ height: `${n > 0 ? Math.max(pct, 6) : 2}%` }}
+              />
+            </div>
+          );
+        })}
       </div>
       <div className="flex gap-1.5 mb-4">
         {bucketLabels.map((l) => (
