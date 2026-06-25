@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { Modal } from "@/components/ui/Modal";
@@ -17,6 +17,7 @@ import { savePrediction } from "@/lib/predictions/actions";
 import { fireConfetti, fireFireworks } from "@/lib/festive/confetti";
 import { TEAMS_BY_TLA } from "@/lib/constants/wc2026-teams";
 import { useDerivedBracket } from "@/hooks/useDerivedBracket";
+import { computeRealR32Projection } from "@/lib/stats/r32-projection";
 import { BRACKET_BY_MATCH_NUMBER } from "@/lib/constants/wc2026-bracket";
 import { venueForMatch } from "@/lib/constants/wc2026-fixture-venues";
 import type { Match } from "@/types/domain";
@@ -34,14 +35,23 @@ export function PredictionModal({
   const { user } = useAuth();
   const { predictions } = useMatchPredictions(match?.id ?? null);
   const { predictions: myPredictions } = useMyPredictions(user?.uid);
-  const { bracket: derivedBracket } = useDerivedBracket(user?.uid);
+  const { bracket: derivedBracket, matches } = useDerivedBracket(user?.uid);
 
   const myPrediction = match ? myPredictions.get(match.id) : undefined;
 
+  // Proyección REAL de clasificados a R32 (según resultados de grupos).
+  const realR32 = useMemo(
+    () => computeRealR32Projection(matches),
+    [matches],
+  );
+
   const [home, setHome] = useState(0);
   const [away, setAway] = useState(0);
-  // Para empates en eliminatorias: qué equipo avanza por penales
+  // Empates en eliminatorias — DOS elecciones independientes:
+  //  • advancingTla: quién avanza en TU BRACKET (alimenta estructura/cascade)
+  //  • realAdvancingTla: quién avanza en el PARTIDO REAL (informativo)
   const [advancingTla, setAdvancingTla] = useState<string | null>(null);
+  const [realAdvancingTla, setRealAdvancingTla] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -58,10 +68,12 @@ export function PredictionModal({
       setHome(myPrediction.homeScore);
       setAway(myPrediction.awayScore);
       setAdvancingTla(myPrediction.advancingTeamTla ?? null);
+      setRealAdvancingTla(myPrediction.realAdvancingTla ?? null);
     } else {
       setHome(0);
       setAway(0);
       setAdvancingTla(null);
+      setRealAdvancingTla(null);
     }
     setError(null);
     setSavedAt(null);
@@ -91,6 +103,7 @@ export function PredictionModal({
 
   const kickoff = new Date(match.utcDate);
   const locked = Date.now() >= kickoff.getTime();
+  const isKnockout = match.stage !== "GROUP";
   const officialHome = TEAMS_BY_TLA[match.homeTeam.tla];
   const officialAway = TEAMS_BY_TLA[match.awayTeam.tla];
   const bracket =
@@ -98,22 +111,45 @@ export function PredictionModal({
       ? BRACKET_BY_MATCH_NUMBER[match.matchNumber]
       : undefined;
 
-  // Si los equipos oficiales aún no están definidos (eliminatorias antes del
-  // sorteo), usamos los DERIVADOS de las predicciones del propio usuario.
+  // === Equipos REALES (la llave que se juega) ===
+  // Oficial (post-sorteo) > Proyección real desde resultados de grupos (R32).
+  const proj =
+    match.matchNumber !== undefined ? realR32.get(match.matchNumber) : undefined;
+  const realHomeTla = officialHome
+    ? officialHome.tla
+    : (proj?.homeTla ?? null);
+  const realAwayTla = officialAway
+    ? officialAway.tla
+    : (proj?.awayTla ?? null);
+  const realHome = realHomeTla ? TEAMS_BY_TLA[realHomeTla] : undefined;
+  const realAway = realAwayTla ? TEAMS_BY_TLA[realAwayTla] : undefined;
+  const realHomeConfirmed = officialHome ? true : (proj?.homeConfirmed ?? false);
+  const realAwayConfirmed = officialAway ? true : (proj?.awayConfirmed ?? false);
+  const hasRealTeams = !!(realHome || realAway);
+
+  // === Equipos del BRACKET del usuario (referencia, alimenta estructura) ===
   const derivedSlot =
     match.matchNumber !== undefined
       ? derivedBracket.get(match.matchNumber)
       : undefined;
-  const derivedHome = derivedSlot?.homeTla
+  const bracketHome = derivedSlot?.homeTla
     ? TEAMS_BY_TLA[derivedSlot.homeTla]
     : undefined;
-  const derivedAway = derivedSlot?.awayTla
+  const bracketAway = derivedSlot?.awayTla
     ? TEAMS_BY_TLA[derivedSlot.awayTla]
     : undefined;
+  const hasBracketTeams = !!(bracketHome || bracketAway);
 
-  // Prioridad: equipo oficial > equipo derivado de mis predicciones > label
-  const homeTeam = officialHome ?? derivedHome;
-  const awayTeam = officialAway ?? derivedAway;
+  // ¿La llave real coincide con tu bracket? Si sí, una sola elección de avance.
+  const bracketMatchesReal =
+    hasRealTeams &&
+    hasBracketTeams &&
+    realHome?.tla === bracketHome?.tla &&
+    realAway?.tla === bracketAway?.tla;
+
+  // Equipos PRIMARIOS a mostrar: reales si existen, si no el bracket (fallback).
+  const homeTeam = hasRealTeams ? realHome : bracketHome;
+  const awayTeam = hasRealTeams ? realAway : bracketAway;
   const homeLabel =
     homeTeam?.name ??
     match.homeLabel ??
@@ -124,8 +160,11 @@ export function PredictionModal({
     match.awayLabel ??
     bracket?.awayLabel ??
     match.awayTeam.name;
-  const isDerived =
-    !officialHome && !officialAway && !!(derivedHome || derivedAway);
+  // Difuminado del bloque primario: si son reales pero aún provisionales.
+  const homeProvisional = hasRealTeams && !realHomeConfirmed && !officialHome;
+  const awayProvisional = hasRealTeams && !realAwayConfirmed && !officialAway;
+  // Bandera de "según tu bracket" solo si caemos al bracket (sin equipos reales).
+  const showingBracketAsPrimary = !hasRealTeams && hasBracketTeams;
 
   const venue = venueForMatch(match.matchNumber);
   const venueLine = [venue?.city, venue?.stadium]
@@ -135,27 +174,41 @@ export function PredictionModal({
   async function handleSave() {
     if (!user || !match) return;
     setError(null);
-    // Validar empate en eliminatorias: debe escoger un ganador
     const isDraw = home === away;
-    const isKnockout = match.stage !== "GROUP";
-    if (isKnockout && isDraw && !advancingTla) {
-      setError(
-        "Si predices empate, debes elegir qué equipo avanza por penales.",
-      );
-      return;
+
+    // Validación de empate en eliminatorias: hay que elegir quién avanza.
+    if (isKnockout && isDraw) {
+      if (hasRealTeams && !realAdvancingTla) {
+        setError(
+          "Empate: elige qué equipo avanza por penales en el partido real.",
+        );
+        return;
+      }
+      if (hasBracketTeams && !bracketMatchesReal && !advancingTla) {
+        setError("Empate: elige también quién avanza en tu bracket.");
+        return;
+      }
     }
+
     setSaving(true);
     try {
+      // Si la llave real coincide con tu bracket, una sola elección sirve para
+      // ambos campos.
+      const bracketAdvance =
+        isKnockout && isDraw
+          ? bracketMatchesReal
+            ? realAdvancingTla
+            : advancingTla
+          : null;
       await savePrediction({
         uid: user.uid,
         matchId: match.id,
         homeScore: home,
         awayScore: away,
-        // Solo guardamos advancingTla si aplica (empate en eliminatorias)
-        advancingTeamTla: isKnockout && isDraw ? advancingTla : null,
+        advancingTeamTla: bracketAdvance,
+        realAdvancingTla: isKnockout && isDraw ? realAdvancingTla : null,
       });
       setSavedAt(Date.now());
-      // Pequeño confeti como feedback positivo
       fireConfetti("small");
     } catch (e) {
       const err = e as Error;
@@ -193,31 +246,27 @@ export function PredictionModal({
           {venueLine && (
             <p className="text-xs text-gray-700">📍 {venueLine}</p>
           )}
-          {isDerived && (
+          {showingBracketAsPrimary && (
             <div className="mt-2 text-[10px] uppercase tracking-widest font-bold text-[var(--pmfu-cobalt)] bg-[var(--pmfu-cobalt)]/10 inline-block px-2 py-1 rounded-full">
-              ⚡ Equipos según tu bracket
+              ⚡ Aún sin definir — equipos según tu bracket
             </div>
           )}
         </div>
 
-        {/* Equipos + steppers */}
+        {/* Equipos PRIMARIOS (la llave real) + steppers */}
         <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 mb-5">
           <TeamColumn
             iso2={homeTeam?.iso2}
             name={homeLabel}
             tla={homeTeam?.tla ?? match.homeTeam.tla}
-            predictedTla={
-              officialHome && derivedHome && derivedHome.tla !== officialHome.tla
-                ? derivedHome.tla
-                : undefined
-            }
-            predictedIso2={
-              officialHome && derivedHome && derivedHome.tla !== officialHome.tla
-                ? derivedHome.iso2
-                : undefined
-            }
-            predictedHit={
-              !!(officialHome && derivedHome && derivedHome.tla === officialHome.tla)
+            status={
+              !hasRealTeams
+                ? null
+                : homeProvisional
+                  ? "provisional"
+                  : realHomeConfirmed
+                    ? "confirmed"
+                    : null
             }
           />
           <span className="text-xl font-bold text-gray-400">vs</span>
@@ -225,18 +274,14 @@ export function PredictionModal({
             iso2={awayTeam?.iso2}
             name={awayLabel}
             tla={awayTeam?.tla ?? match.awayTeam.tla}
-            predictedTla={
-              officialAway && derivedAway && derivedAway.tla !== officialAway.tla
-                ? derivedAway.tla
-                : undefined
-            }
-            predictedIso2={
-              officialAway && derivedAway && derivedAway.tla !== officialAway.tla
-                ? derivedAway.iso2
-                : undefined
-            }
-            predictedHit={
-              !!(officialAway && derivedAway && derivedAway.tla === officialAway.tla)
+            status={
+              !hasRealTeams
+                ? null
+                : awayProvisional
+                  ? "provisional"
+                  : realAwayConfirmed
+                    ? "confirmed"
+                    : null
             }
           />
         </div>
@@ -247,45 +292,132 @@ export function PredictionModal({
           <ScoreStepper value={away} onChange={setAway} disabled={locked} />
         </div>
 
-        {/* Selector "quién avanza" cuando hay empate en eliminatorias */}
-        {match.stage !== "GROUP" && home === away && !locked && (
+        {/* Empate: quién avanza en el PARTIDO REAL (cuando hay equipos reales) */}
+        {isKnockout && home === away && !locked && hasRealTeams && (
           <div className="bg-[var(--pmfu-orange)]/10 border border-[var(--pmfu-orange)]/30 rounded-xl p-3 mb-4">
             <p className="text-xs font-bold text-gray-900 mb-2">
-              🟰 Empate en eliminatorias — ¿quién avanza?
+              🟰 Empate en eliminatoria — ¿quién avanza por penales?
             </p>
             <div className="grid grid-cols-2 gap-2">
               <AdvanceButton
-                tla={homeTeam?.tla ?? match.homeTeam.tla}
-                label={homeTeam?.name ?? homeLabel}
-                iso2={homeTeam?.iso2}
-                selected={advancingTla === (homeTeam?.tla ?? match.homeTeam.tla)}
-                onClick={() =>
-                  setAdvancingTla(homeTeam?.tla ?? match.homeTeam.tla ?? null)
-                }
+                tla={realHomeTla ?? ""}
+                label={realHome?.name ?? homeLabel}
+                iso2={realHome?.iso2}
+                selected={realAdvancingTla === realHomeTla}
+                onClick={() => setRealAdvancingTla(realHomeTla)}
               />
               <AdvanceButton
-                tla={awayTeam?.tla ?? match.awayTeam.tla}
-                label={awayTeam?.name ?? awayLabel}
-                iso2={awayTeam?.iso2}
-                selected={advancingTla === (awayTeam?.tla ?? match.awayTeam.tla)}
-                onClick={() =>
-                  setAdvancingTla(awayTeam?.tla ?? match.awayTeam.tla ?? null)
-                }
+                tla={realAwayTla ?? ""}
+                label={realAway?.name ?? awayLabel}
+                iso2={realAway?.iso2}
+                selected={realAdvancingTla === realAwayTla}
+                onClick={() => setRealAdvancingTla(realAwayTla)}
               />
             </div>
           </div>
         )}
 
+        {/* Empate: quién avanza (FALLBACK al bracket cuando aún no hay reales) */}
+        {isKnockout && home === away && !locked && !hasRealTeams && hasBracketTeams && (
+          <div className="bg-[var(--pmfu-orange)]/10 border border-[var(--pmfu-orange)]/30 rounded-xl p-3 mb-4">
+            <p className="text-xs font-bold text-gray-900 mb-2">
+              🟰 Empate en eliminatoria — ¿quién avanza?
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              <AdvanceButton
+                tla={bracketHome?.tla ?? ""}
+                label={bracketHome?.name ?? homeLabel}
+                iso2={bracketHome?.iso2}
+                selected={advancingTla === bracketHome?.tla}
+                onClick={() => setAdvancingTla(bracketHome?.tla ?? null)}
+              />
+              <AdvanceButton
+                tla={bracketAway?.tla ?? ""}
+                label={bracketAway?.name ?? awayLabel}
+                iso2={bracketAway?.iso2}
+                selected={advancingTla === bracketAway?.tla}
+                onClick={() => setAdvancingTla(bracketAway?.tla ?? null)}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Referencia: tu bracket (pequeño y difuminado) — solo para estructura */}
+        {hasRealTeams && hasBracketTeams && !locked && (
+          <div className="bg-gray-50 border border-gray-200 rounded-xl p-2.5 mb-4 opacity-80">
+            <p className="text-[10px] font-bold uppercase tracking-wide text-gray-500 mb-1">
+              ⚡ Según tu bracket · solo puntos de estructura
+            </p>
+            <div className="flex items-center justify-center gap-2 text-xs text-gray-700">
+              <span className="flex items-center gap-1">
+                {bracketHome && (
+                  <Flag iso2={bracketHome.iso2} size={14} alt={bracketHome.name} />
+                )}
+                <span className="font-medium">
+                  {bracketHome?.name ?? "—"}
+                </span>
+              </span>
+              <span className="text-gray-400">vs</span>
+              <span className="flex items-center gap-1">
+                {bracketAway && (
+                  <Flag iso2={bracketAway.iso2} size={14} alt={bracketAway.name} />
+                )}
+                <span className="font-medium">
+                  {bracketAway?.name ?? "—"}
+                </span>
+              </span>
+            </div>
+            {/* Si la llave real difiere de tu bracket y hay empate, pide el
+                avance de TU bracket por separado */}
+            {isKnockout &&
+              home === away &&
+              !bracketMatchesReal && (
+                <div className="mt-2">
+                  <p className="text-[10px] font-semibold text-gray-600 mb-1.5">
+                    ¿Y quién avanza en tu bracket?
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <AdvanceButton
+                      tla={bracketHome?.tla ?? ""}
+                      label={bracketHome?.name ?? "—"}
+                      iso2={bracketHome?.iso2}
+                      selected={advancingTla === bracketHome?.tla}
+                      onClick={() => setAdvancingTla(bracketHome?.tla ?? null)}
+                    />
+                    <AdvanceButton
+                      tla={bracketAway?.tla ?? ""}
+                      label={bracketAway?.name ?? "—"}
+                      iso2={bracketAway?.iso2}
+                      selected={advancingTla === bracketAway?.tla}
+                      onClick={() => setAdvancingTla(bracketAway?.tla ?? null)}
+                    />
+                  </div>
+                </div>
+              )}
+          </div>
+        )}
+
         {/* Mostrar quién avanzó si está bloqueada y hubo empate */}
-        {match.stage !== "GROUP" &&
+        {isKnockout &&
           locked &&
           myPrediction &&
           myPrediction.homeScore === myPrediction.awayScore &&
-          myPrediction.advancingTeamTla && (
-            <div className="bg-gray-50 border border-gray-200 rounded-xl p-2 mb-3 text-xs text-gray-800">
-              <strong>🟰 Predijiste empate, avanza:</strong>{" "}
-              {TEAMS_BY_TLA[myPrediction.advancingTeamTla]?.name ??
-                myPrediction.advancingTeamTla}
+          (myPrediction.realAdvancingTla || myPrediction.advancingTeamTla) && (
+            <div className="bg-gray-50 border border-gray-200 rounded-xl p-2 mb-3 text-xs text-gray-800 space-y-0.5">
+              {myPrediction.realAdvancingTla && (
+                <p>
+                  <strong>🟰 Avanza (real):</strong>{" "}
+                  {TEAMS_BY_TLA[myPrediction.realAdvancingTla]?.name ??
+                    myPrediction.realAdvancingTla}
+                </p>
+              )}
+              {myPrediction.advancingTeamTla && (
+                <p className="text-gray-500">
+                  En tu bracket:{" "}
+                  {TEAMS_BY_TLA[myPrediction.advancingTeamTla]?.name ??
+                    myPrediction.advancingTeamTla}
+                </p>
+              )}
             </div>
           )}
 
@@ -353,22 +485,22 @@ function TeamColumn({
   iso2,
   name,
   tla,
-  predictedTla,
-  predictedIso2,
-  predictedHit,
+  status,
 }: {
   iso2?: string;
   name: string;
   tla: string;
-  /** TLA del equipo que predijo el usuario (solo cuando difiere del oficial). */
-  predictedTla?: string;
-  /** Bandera ISO2 del equipo predicho. */
-  predictedIso2?: string;
-  /** True cuando hay equipo oficial Y el derivado del usuario coincide. */
-  predictedHit?: boolean;
+  /** Estado del clasificado real: provisional (difuminado) o confirmado. */
+  status?: "provisional" | "confirmed" | null;
 }) {
+  const provisional = status === "provisional";
   return (
-    <div className="flex flex-col items-center text-center gap-2">
+    <div
+      className={cn(
+        "flex flex-col items-center text-center gap-2 transition-opacity",
+        provisional && "opacity-50",
+      )}
+    >
       {iso2 ? (
         <Flag iso2={iso2} size={48} alt={name} />
       ) : (
@@ -388,26 +520,15 @@ function TeamColumn({
         {iso2 && (
           <p className="text-xs text-gray-600 font-semibold">{tla}</p>
         )}
-        {predictedHit && (
-          <p
-            className="mt-1 inline-block text-[10px] font-bold text-[var(--pmfu-mint)] bg-[var(--pmfu-mint)]/15 px-1.5 py-0.5 rounded-full"
-            title="Tu bracket acertó este equipo"
-          >
-            ✓ Acertaste
+        {status === "confirmed" && (
+          <p className="mt-1 inline-block text-[10px] font-bold text-[var(--pmfu-mint)] bg-[var(--pmfu-mint)]/15 px-1.5 py-0.5 rounded-full">
+            ✓ Clasificado
           </p>
         )}
-        {predictedTla && !predictedHit && (
-          <div
-            className="mt-1 flex items-center justify-center gap-1 opacity-60"
-            title="Equipo que predijiste para este slot"
-          >
-            {predictedIso2 ? (
-              <Flag iso2={predictedIso2} size={12} alt={predictedTla} />
-            ) : null}
-            <span className="text-[10px] font-semibold text-gray-700 line-through">
-              Tu pick: {predictedTla}
-            </span>
-          </div>
+        {provisional && (
+          <p className="mt-1 inline-block text-[10px] font-bold text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded-full">
+            Provisional
+          </p>
         )}
       </div>
     </div>

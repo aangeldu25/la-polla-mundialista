@@ -19,6 +19,7 @@ import { MatchCard } from "@/components/partidos/MatchCard";
 import { computeRealR32Projection } from "@/lib/stats/r32-projection";
 import { PredictionModal } from "@/components/predictions/PredictionModal";
 import { SubscribeCalendarCard } from "@/components/calendar/SubscribeCalendarCard";
+import { BracketTree } from "@/components/partidos/BracketTree";
 import { cn } from "@/lib/utils";
 
 type Filter =
@@ -333,8 +334,13 @@ export default function PartidosPage() {
       </div>
       <span data-tick={nowTick} className="sr-only" />
 
-      <div className="mb-4">
+      {/* Calendario del fixture (siempre visible) */}
+      <div className="mb-3">
         <SubscribeCalendarCard />
+      </div>
+      {/* Bracket de eliminatorias (árbol FIFA, colapsable) — después */}
+      <div className="mb-4">
+        <BracketTree matches={matches} />
       </div>
 
       <FilterTabs

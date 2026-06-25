@@ -22,8 +22,16 @@ export async function savePrediction(params: {
   homeScore: number;
   awayScore: number;
   advancingTeamTla?: string | null;
+  realAdvancingTla?: string | null;
 }): Promise<void> {
-  const { uid, matchId, homeScore, awayScore, advancingTeamTla } = params;
+  const {
+    uid,
+    matchId,
+    homeScore,
+    awayScore,
+    advancingTeamTla,
+    realAdvancingTla,
+  } = params;
   if (
     !Number.isInteger(homeScore) ||
     !Number.isInteger(awayScore) ||
@@ -49,6 +57,7 @@ export async function savePrediction(params: {
     homeScore,
     awayScore,
     advancingTeamTla: advancingTeamTla ?? null,
+    realAdvancingTla: realAdvancingTla ?? null,
     pointsAwarded: null,
     isExact: null,
     isWinnerCorrect: null,

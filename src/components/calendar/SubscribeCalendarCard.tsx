@@ -2,7 +2,11 @@
 
 import { useEffect, useState } from "react";
 
-export function SubscribeCalendarCard() {
+export function SubscribeCalendarCard({
+  compact = false,
+}: {
+  compact?: boolean;
+}) {
   const [webcalUrl, setWebcalUrl] = useState<string>(
     "/api/calendar/fixture.ics",
   );
@@ -11,6 +15,8 @@ export function SubscribeCalendarCard() {
   );
   const [showHelp, setShowHelp] = useState(false);
   const [copied, setCopied] = useState(false);
+  // En modo compacto el contenido arranca colapsado.
+  const [expanded, setExpanded] = useState(!compact);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -38,11 +44,39 @@ export function SubscribeCalendarCard() {
     );
   }
 
+  // Modo compacto colapsado: solo el encabezado clickeable.
+  if (compact && !expanded) {
+    return (
+      <button
+        onClick={() => setExpanded(true)}
+        className="w-full rounded-2xl border border-gray-200 bg-white flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors"
+      >
+        <span className="font-bold text-sm text-gray-900">
+          📅 Calendario del fixture
+        </span>
+        <span className="text-xs text-gray-500">
+          Llevar los 104 partidos a tu calendario ▼
+        </span>
+      </button>
+    );
+  }
+
   return (
     <div className="pmfu-glass rounded-2xl p-4 md:p-5">
-      <p className="text-xs uppercase tracking-widest text-[var(--pmfu-cobalt)] font-bold mb-1.5">
-        📅 Calendario del fixture
-      </p>
+      <div className="flex items-start justify-between">
+        <p className="text-xs uppercase tracking-widest text-[var(--pmfu-cobalt)] font-bold mb-1.5">
+          📅 Calendario del fixture
+        </p>
+        {compact && (
+          <button
+            onClick={() => setExpanded(false)}
+            className="text-xs text-gray-400 hover:text-gray-600"
+            aria-label="Colapsar"
+          >
+            ▲
+          </button>
+        )}
+      </div>
       <h3 className="font-bold text-gray-900 mb-1">
         Lleva los 104 partidos a tu calendario
       </h3>

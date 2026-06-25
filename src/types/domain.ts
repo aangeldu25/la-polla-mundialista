@@ -92,8 +92,13 @@ export interface MatchPrediction {
   matchId: string;
   homeScore: number;
   awayScore: number;
-  // Para eliminatorias: si predicen empate en 90', necesitamos quién pasa
+  // Para eliminatorias: si predicen empate en 90', quién pasa por penales.
+  // advancingTeamTla → equipo del BRACKET del usuario (alimenta su cascade y
+  //   los puntos de estructura). NO afecta los puntos de marcador.
   advancingTeamTla?: string | null;
+  // realAdvancingTla → equipo REAL que el usuario predice que pasa por penales
+  //   en el partido que se juega de verdad. Informativo (no puntúa hoy).
+  realAdvancingTla?: string | null;
   pointsAwarded: number | null; // null hasta que termine el partido
   isExact: boolean | null;
   isWinnerCorrect: boolean | null;

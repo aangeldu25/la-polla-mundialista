@@ -22,6 +22,22 @@ export type DerivedBracket = Map<number, ResolvedSlot>;
 // Para un partido eliminatorio determinado por matchNumber, encuentra la
 // predicción del usuario y retorna el TLA ganador (o null si predijo empate
 // o no hay predicción).
+// Busca la predicción de un partido por su matchNumber, tolerando documentos
+// duplicados (el real de Football-Data y el placeholder sembrado comparten
+// matchNumber; la predicción del usuario puede estar en cualquiera de los dos).
+function findPredictionByMatchNumber(
+  matchNumber: number,
+  allMatches: Match[],
+  predictions: Map<string, MatchPrediction>,
+): MatchPrediction | undefined {
+  for (const m of allMatches) {
+    if (m.matchNumber !== matchNumber) continue;
+    const p = predictions.get(m.id);
+    if (p) return p;
+  }
+  return undefined;
+}
+
 function pickWinner(
   matchNumber: number,
   allMatches: Match[],
@@ -29,9 +45,7 @@ function pickWinner(
   derivedHomeTla: string | null,
   derivedAwayTla: string | null,
 ): string | null {
-  const match = allMatches.find((m) => m.matchNumber === matchNumber);
-  if (!match) return null;
-  const pred = predictions.get(match.id);
+  const pred = findPredictionByMatchNumber(matchNumber, allMatches, predictions);
   if (!pred) return null;
   if (pred.homeScore > pred.awayScore) return derivedHomeTla;
   if (pred.awayScore > pred.homeScore) return derivedAwayTla;
@@ -48,9 +62,7 @@ function pickLoser(
   derivedHomeTla: string | null,
   derivedAwayTla: string | null,
 ): string | null {
-  const match = allMatches.find((m) => m.matchNumber === matchNumber);
-  if (!match) return null;
-  const pred = predictions.get(match.id);
+  const pred = findPredictionByMatchNumber(matchNumber, allMatches, predictions);
   if (!pred) return null;
   if (pred.homeScore > pred.awayScore) return derivedAwayTla;
   if (pred.awayScore > pred.homeScore) return derivedHomeTla;
