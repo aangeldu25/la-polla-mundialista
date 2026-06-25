@@ -9,14 +9,25 @@ import { venueForMatch } from "@/lib/constants/wc2026-fixture-venues";
 import type { Match, MatchPrediction } from "@/types/domain";
 import { cn } from "@/lib/utils";
 
+export interface ProjectedSide {
+  tla: string;
+  confirmed: boolean;
+}
+
 export function MatchCard({
   match,
   prediction,
   onClick,
+  projectedHome,
+  projectedAway,
 }: {
   match: Match;
   prediction?: MatchPrediction;
   onClick?: () => void;
+  // Clasificado proyectado según resultados reales (para slots de eliminatorias
+  // aún sin equipo oficial). confirmed = grupo cerrado; si no, provisional.
+  projectedHome?: ProjectedSide | null;
+  projectedAway?: ProjectedSide | null;
 }) {
   const date = new Date(match.utcDate);
   const dateLine = format(date, "EEE d MMM", { locale: es });
@@ -108,6 +119,7 @@ export function MatchCard({
           label={match.homeLabel ?? bracket?.homeLabel}
           iso2={home?.iso2}
           side="home"
+          projected={projectedHome}
         />
         <div className="flex flex-col items-center min-w-[60px]">
           {hasScore ? (
@@ -134,6 +146,7 @@ export function MatchCard({
           label={match.awayLabel ?? bracket?.awayLabel}
           iso2={away?.iso2}
           side="away"
+          projected={projectedAway}
         />
       </div>
 
@@ -215,17 +228,24 @@ function TeamSide({
   label,
   iso2,
   side,
+  projected,
 }: {
   tla: string;
   name: string;
   label?: string;
   iso2?: string;
   side: "home" | "away";
+  projected?: ProjectedSide | null;
 }) {
   const isTBD = !tla || !iso2;
   const displayLabel =
     label ??
     (name && !name.toLowerCase().includes("por definir") ? name : undefined);
+
+  // Si no hay equipo oficial pero sí una proyección por resultados reales,
+  // la mostramos: bandera tenue (provisional) o normal (clasificación oficial).
+  const proj = isTBD && projected?.tla ? TEAMS_BY_TLA[projected.tla] : null;
+
   return (
     <div
       className={cn(
@@ -235,23 +255,55 @@ function TeamSide({
     >
       {!isTBD ? (
         <Flag iso2={iso2} size={32} alt={name} />
+      ) : proj ? (
+        <div
+          className={cn(
+            "transition-opacity",
+            projected?.confirmed ? "opacity-100" : "opacity-45",
+          )}
+        >
+          <Flag iso2={proj.iso2} size={32} alt={proj.name} />
+        </div>
       ) : (
         <div className="w-8 h-6 bg-gray-200 rounded flex items-center justify-center text-[10px] font-bold text-gray-500">
           ?
         </div>
       )}
       <div className={cn("min-w-0", side === "away" && "text-right")}>
-        {isTBD ? (
-          <p className="font-semibold text-sm text-gray-800 italic leading-tight">
-            {displayLabel ?? "Por definir"}
-          </p>
-        ) : (
+        {!isTBD ? (
           <>
             <p className="font-bold text-sm md:text-base text-gray-900 truncate">
               {name}
             </p>
             <p className="text-xs text-gray-600 font-semibold">{tla}</p>
           </>
+        ) : proj ? (
+          <>
+            <p
+              className={cn(
+                "font-bold text-sm md:text-base truncate",
+                projected?.confirmed ? "text-gray-900" : "text-gray-500",
+              )}
+            >
+              {proj.name}
+            </p>
+            <p
+              className={cn(
+                "text-[10px] font-semibold flex items-center gap-1",
+                side === "away" && "justify-end",
+                projected?.confirmed
+                  ? "text-[var(--pmfu-mint)]"
+                  : "text-gray-400",
+              )}
+            >
+              {projected?.confirmed ? "✓ Clasificado" : "Provisional"}
+              <span className="text-gray-400 font-normal">· {displayLabel}</span>
+            </p>
+          </>
+        ) : (
+          <p className="font-semibold text-sm text-gray-800 italic leading-tight">
+            {displayLabel ?? "Por definir"}
+          </p>
         )}
       </div>
     </div>

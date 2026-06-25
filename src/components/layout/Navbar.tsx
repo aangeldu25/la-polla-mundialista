@@ -13,6 +13,7 @@ const navItems = [
   { href: "/partidos", label: "Partidos" },
   { href: "/quinielas", label: "Quinielas" },
   { href: "/ranking", label: "Ranking" },
+  { href: "/estadisticas", label: "Estadísticas" },
   { href: "/pollas", label: "Mis pollas" },
 ];
 
@@ -117,6 +118,15 @@ export function Navbar() {
             >
               Mi perfil
             </Link>
+            {profile?.isAdmin && (
+              <Link
+                href="/admin"
+                className="md:hidden block px-3 py-2 rounded-xl text-sm font-medium text-[var(--pmfu-magenta)] hover:bg-[var(--pmfu-magenta)]/10"
+                onClick={() => setOpen(false)}
+              >
+                Admin
+              </Link>
+            )}
             {profile && (
               <div className="px-3 py-2 text-xs text-gray-600 border-t border-gray-200 mt-1 pt-2">
                 {profile.totalPoints} pts totales

@@ -21,10 +21,12 @@ export type FDStage =
   | "GROUP_STAGE"
   | "PLAYOFFS"
   | "ROUND_OF_32"
+  | "LAST_32" // Football-Data usa este nombre para Dieciseisavos
   | "LAST_16"
   | "QUARTER_FINALS"
   | "SEMI_FINALS"
   | "3RD_PLACE"
+  | "THIRD_PLACE" // variante real que envía la API
   | "FINAL";
 
 export type FDStatus =

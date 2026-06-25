@@ -18,6 +18,7 @@ function mapStage(stage: FDStage): MatchStage {
     case "PLAYOFFS":
       return "GROUP";
     case "ROUND_OF_32":
+    case "LAST_32":
       return "ROUND_OF_32";
     case "LAST_16":
       return "ROUND_OF_16";
@@ -26,6 +27,7 @@ function mapStage(stage: FDStage): MatchStage {
     case "SEMI_FINALS":
       return "SEMI_FINAL";
     case "3RD_PLACE":
+    case "THIRD_PLACE":
       return "THIRD_PLACE";
     case "FINAL":
       return "FINAL";

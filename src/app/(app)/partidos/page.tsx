@@ -16,6 +16,7 @@ import { useMyPredictions } from "@/hooks/usePredictions";
 import type { Match, MatchStage } from "@/types/domain";
 import { STAGE_LABEL_ES, STAGE_ORDER } from "@/lib/constants/stages";
 import { MatchCard } from "@/components/partidos/MatchCard";
+import { computeRealR32Projection } from "@/lib/stats/r32-projection";
 import { PredictionModal } from "@/components/predictions/PredictionModal";
 import { SubscribeCalendarCard } from "@/components/calendar/SubscribeCalendarCard";
 import { cn } from "@/lib/utils";
@@ -52,7 +53,11 @@ function matchQuality(m: Match): number {
 
 // Consolida la lista de Firestore en exactamente 104 partidos (o menos si
 // faltan datos). Maneja duplicados, partidos basura y dedup por fase.
-function consolidateMatches(all: Match[]): Match[] {
+// `predictedIds` = docIds donde el usuario tiene predicción (para no ocultarla).
+function consolidateMatches(
+  all: Match[],
+  predictedIds: Set<string> = new Set(),
+): Match[] {
   const validStages: MatchStage[] = [
     "GROUP",
     "ROUND_OF_32",
@@ -75,13 +80,27 @@ function consolidateMatches(all: Match[]): Match[] {
 
   const final: Match[] = [];
   for (const [stage, list] of byStage) {
-    // 3) Ordenar por calidad desc, luego matchNumber asc, luego fecha asc.
+    // 3) Ordenar por calidad desc, luego matchNumber asc.
+    // Desempates clave cuando dos docs representan el mismo partido (típico en
+    // eliminatorias: doc real de Football-Data + placeholder sembrado):
+    //   a) Preferimos el documento donde el usuario YA tiene su predicción,
+    //      para nunca ocultar una predicción existente.
+    //   b) Si ninguno/ambos tienen predicción, preferimos el sembrado
+    //      (id "BRACKET-*"), que conserva las etiquetas oficiales del bracket.
+    // En cuanto el doc real recibe equipos definidos, su calidad sube (+1000)
+    // y gana automáticamente.
     const sorted = [...list].sort((a, b) => {
       const q = matchQuality(b) - matchQuality(a);
       if (q !== 0) return q;
       const an = a.matchNumber ?? 9999;
       const bn = b.matchNumber ?? 9999;
       if (an !== bn) return an - bn;
+      const aPred = predictedIds.has(a.id) ? 0 : 1;
+      const bPred = predictedIds.has(b.id) ? 0 : 1;
+      if (aPred !== bPred) return aPred - bPred; // el que tiene predicción primero
+      const aSeed = a.id.startsWith("BRACKET-") ? 0 : 1;
+      const bSeed = b.id.startsWith("BRACKET-") ? 0 : 1;
+      if (aSeed !== bSeed) return aSeed - bSeed; // sembrado antes que real
       return a.utcDate.localeCompare(b.utcDate);
     });
 
@@ -108,7 +127,7 @@ function consolidateMatches(all: Match[]): Match[] {
 export default function PartidosPage() {
   const { user } = useAuth();
   const { predictions } = useMyPredictions(user?.uid);
-  const [matches, setMatches] = useState<Match[]>([]);
+  const [rawMatches, setRawMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<Filter>("UPCOMING");
   const [error, setError] = useState<string | null>(null);
@@ -124,8 +143,7 @@ export default function PartidosPage() {
     const unsub = onSnapshot(
       q,
       (snap) => {
-        const all = snap.docs.map((d) => d.data() as Match);
-        setMatches(consolidateMatches(all));
+        setRawMatches(snap.docs.map((d) => d.data() as Match));
         setLoading(false);
       },
       (e) => {
@@ -151,6 +169,18 @@ export default function PartidosPage() {
     const id = setInterval(() => setNowTick(Date.now()), 30000);
     return () => clearInterval(id);
   }, []);
+
+  // Consolidamos los 104 partidos teniendo en cuenta en cuáles documentos
+  // tiene predicción el usuario, para no ocultar ninguna predicción al
+  // deduplicar (eliminatorias con doc real + placeholder sembrado).
+  const predictedIds = useMemo(
+    () => new Set(predictions.keys()),
+    [predictions],
+  );
+  const matches = useMemo(
+    () => consolidateMatches(rawMatches, predictedIds),
+    [rawMatches, predictedIds],
+  );
 
   // Disparo único de seed cuando no hay partidos. Usamos un ref en vez de
   // useState para evitar setState dentro de un effect (regla de React 19).
@@ -186,6 +216,12 @@ export default function PartidosPage() {
       );
     return matches.filter((m) => m.stage === filter);
   }, [matches, filter, predictions, nowTick]);
+
+  // Proyección real de clasificados a R32 según resultados de grupos.
+  const r32Projection = useMemo(
+    () => computeRealR32Projection(matches),
+    [matches],
+  );
 
   const grouped = useMemo(() => {
     const map = new Map<MatchStage, Match[]>();
@@ -316,14 +352,33 @@ export default function PartidosPage() {
               {STAGE_LABEL_ES[stage]}
             </h2>
             <div className="grid md:grid-cols-2 gap-3">
-              {ms.map((m) => (
-                <MatchCard
-                  key={m.id}
-                  match={m}
-                  prediction={predictions.get(m.id)}
-                  onClick={() => setSelected(m)}
-                />
-              ))}
+              {ms.map((m) => {
+                // Solo proyectamos R32 (slots de grupos) sin equipo oficial aún
+                const proj =
+                  m.stage === "ROUND_OF_32" &&
+                  m.matchNumber !== undefined &&
+                  !(m.homeTeam.tla && m.awayTeam.tla)
+                    ? r32Projection.get(m.matchNumber)
+                    : undefined;
+                return (
+                  <MatchCard
+                    key={m.id}
+                    match={m}
+                    prediction={predictions.get(m.id)}
+                    onClick={() => setSelected(m)}
+                    projectedHome={
+                      proj?.homeTla
+                        ? { tla: proj.homeTla, confirmed: proj.homeConfirmed }
+                        : null
+                    }
+                    projectedAway={
+                      proj?.awayTla
+                        ? { tla: proj.awayTla, confirmed: proj.awayConfirmed }
+                        : null
+                    }
+                  />
+                );
+              })}
             </div>
           </section>
         ))}
