@@ -53,9 +53,12 @@ function mapStatus(s: FDStatus): MatchStatus {
 }
 
 function mapTeam(t: FDMatch["homeTeam"]): Team | null {
-  const tla = (t?.tla ?? "").toUpperCase();
-  if (!tla || !t?.id) return null;
-  const known = TEAMS_BY_TLA[tla];
+  const rawTla = (t?.tla ?? "").toUpperCase();
+  if (!rawTla || !t?.id) return null;
+  const known = TEAMS_BY_TLA[rawTla];
+  // Guardar SIEMPRE el TLA canónico FIFA (URU, no URY), para que las tablas y
+  // los cruces emparejen los partidos con WC2026_GROUPS.
+  const tla = known?.tla ?? rawTla;
   return {
     id: String(t.id),
     name: known?.name ?? t.name,

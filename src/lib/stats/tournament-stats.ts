@@ -6,6 +6,7 @@
 // de endpoints de "stats" de pago ni de datos demo.
 
 import { WC2026_GROUPS } from "@/lib/constants/wc2026-groups";
+import { canonicalTla } from "@/lib/constants/wc2026-teams";
 import {
   compareStandings,
   type TeamStanding,
@@ -115,8 +116,8 @@ export function computeRealGroupStandings(
     if (m.stage !== "GROUP" || m.group !== group) continue;
     if (!hasLiveOrFinalScore(m)) continue;
     if (m.status === "LIVE") hasLive = true;
-    const h = m.homeTeam.tla;
-    const a = m.awayTeam.tla;
+    const h = canonicalTla(m.homeTeam.tla);
+    const a = canonicalTla(m.awayTeam.tla);
     if (standings[h]) apply(standings[h], m.score.homeFullTime!, m.score.awayFullTime!);
     if (standings[a]) apply(standings[a], m.score.awayFullTime!, m.score.homeFullTime!);
   }
@@ -238,8 +239,8 @@ export function computeTeamTotals(allMatches: Match[]): TeamTotals[] {
 
   for (const m of allMatches) {
     if (!hasFinalScore(m)) continue;
-    const hTla = m.homeTeam.tla;
-    const aTla = m.awayTeam.tla;
+    const hTla = canonicalTla(m.homeTeam.tla);
+    const aTla = canonicalTla(m.awayTeam.tla);
     if (!hTla || !aTla) continue; // saltar TBD de eliminatorias sin definir
     const h = m.score.homeFullTime!;
     const a = m.score.awayFullTime!;
@@ -308,8 +309,8 @@ export function computeTeamForms(allMatches: Match[]): TeamForm[] {
 
   for (const m of allMatches) {
     if (!hasFinalScore(m)) continue;
-    const hTla = m.homeTeam.tla;
-    const aTla = m.awayTeam.tla;
+    const hTla = canonicalTla(m.homeTeam.tla);
+    const aTla = canonicalTla(m.awayTeam.tla);
     if (!hTla || !aTla) continue;
     const h = m.score.homeFullTime!;
     const a = m.score.awayFullTime!;

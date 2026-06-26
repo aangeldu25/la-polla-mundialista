@@ -333,6 +333,14 @@ for (const [alias, canonicalTla] of Object.entries(TLA_ALIASES)) {
 
 export const TEAMS_BY_TLA: Record<string, WCTeam> = baseMap;
 
+// Normaliza un TLA a su forma canónica FIFA. Football-Data a veces devuelve
+// códigos ISO alpha-3 (URY, PRY, PRT...) en vez del TLA FIFA (URU, PAR, POR...).
+// Si no se reconoce, devuelve el TLA en mayúsculas tal cual.
+export function canonicalTla(tla: string | null | undefined): string {
+  const up = (tla ?? "").toUpperCase();
+  return TEAMS_BY_TLA[up]?.tla ?? up;
+}
+
 // Garantizamos orden alfabético en español aquí, no en la constante origen,
 // por si la fuente cambia.
 export const TEAMS_SORTED = [...WC2026_TEAMS].sort((a, b) =>

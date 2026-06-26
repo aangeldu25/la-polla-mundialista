@@ -4,6 +4,7 @@
 // de TLA cuando todo lo demás empata).
 
 import { WC2026_GROUPS } from "@/lib/constants/wc2026-groups";
+import { canonicalTla } from "@/lib/constants/wc2026-teams";
 import type { Match, MatchPrediction } from "@/types/domain";
 
 export interface TeamStanding {
@@ -78,8 +79,8 @@ export function computeGroupStandings(
   for (const match of groupMatches) {
     const pred = myPredictions.get(match.id);
     if (!pred) continue;
-    const homeTla = match.homeTeam.tla;
-    const awayTla = match.awayTeam.tla;
+    const homeTla = canonicalTla(match.homeTeam.tla);
+    const awayTla = canonicalTla(match.awayTeam.tla);
     if (standings[homeTla])
       applyToTeam(standings[homeTla], pred.homeScore, pred.awayScore);
     if (standings[awayTla])
