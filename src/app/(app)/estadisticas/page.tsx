@@ -9,6 +9,7 @@ import { GROUP_LETTERS } from "@/lib/constants/wc2026-groups";
 import {
   dedupeMatches,
   computeAllRealStandings,
+  computeBestThirds,
   computeTournamentSummary,
   computeTeamTotals,
   computeTeamForms,
@@ -17,6 +18,7 @@ import {
   unbeatenTeams,
   type TeamTotals,
   type TeamForm,
+  type ThirdPlaceRow,
 } from "@/lib/stats/tournament-stats";
 import {
   getHistoricalContext,
@@ -47,6 +49,7 @@ export default function EstadisticasPage() {
     () => computeAllRealStandings(matches),
     [matches],
   );
+  const bestThirds = useMemo(() => computeBestThirds(matches), [matches]);
   const totals = useMemo(() => computeTeamTotals(matches), [matches]);
   const attack = useMemo(() => topAttack(totals, 99), [totals]);
   const defense = useMemo(() => topDefense(totals, 99), [totals]);
@@ -214,6 +217,15 @@ export default function EstadisticasPage() {
               subtitle="Posiciones reales según resultados"
             />
             <GroupTables standings={standings} />
+
+            {/* Mejores terceros — los 8 primeros clasifican a R32 */}
+            <div className="mt-4 pt-3 border-t border-gray-200">
+              <CardHeader
+                title="🥉 Los mejores terceros"
+                subtitle="Los 8 primeros avanzan a Dieciseisavos (criterios FIFA)"
+              />
+              <BestThirdsTable rows={bestThirds} />
+            </div>
           </Card>
 
           {/* Fuentes */}
@@ -1119,6 +1131,82 @@ function ShowMore({
         </button>
       )}
     </>
+  );
+}
+
+function BestThirdsTable({ rows }: { rows: ThirdPlaceRow[] }) {
+  const anyPlayed = rows.some((r) => r.standing.played > 0);
+  if (!anyPlayed) {
+    return (
+      <p className="text-sm text-gray-600 italic text-center py-3">
+        Aún sin terceros definidos.
+      </p>
+    );
+  }
+  return (
+    <table className="w-full text-xs">
+      <thead>
+        <tr className="text-gray-500 border-b border-gray-100">
+          <th className="text-left font-semibold py-1.5 pl-3">Equipo</th>
+          <th className="font-semibold w-7">Gr</th>
+          <th className="font-semibold w-7">PJ</th>
+          <th className="font-semibold w-7">DG</th>
+          <th className="font-semibold w-8 pr-3 text-right">Pts</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((r, i) => {
+          const team = TEAMS_BY_TLA[r.standing.teamTla];
+          // Línea divisoria tras el 8º clasificado
+          const isCutoff = i === 7;
+          return (
+            <tr
+              key={r.standing.teamTla}
+              className={cn(
+                "border-b border-gray-50 last:border-0",
+                r.qualifying && "bg-[var(--pmfu-lime)]/15",
+                isCutoff && "border-b-2 border-[var(--pmfu-cobalt)]/30",
+              )}
+            >
+              <td className="py-1.5 pl-3">
+                <div className="flex items-center gap-1.5">
+                  <span
+                    className={cn(
+                      "w-3 tabular-nums",
+                      r.qualifying
+                        ? "text-[var(--pmfu-mint)] font-bold"
+                        : "text-gray-400",
+                    )}
+                  >
+                    {i + 1}
+                  </span>
+                  {team && (
+                    <Flag iso2={team.iso2} size={14} alt={team.name} />
+                  )}
+                  <span className="font-medium text-gray-900 truncate">
+                    {team?.name ?? r.standing.teamTla}
+                  </span>
+                </div>
+              </td>
+              <td className="text-center tabular-nums text-gray-500 font-semibold">
+                {r.group}
+              </td>
+              <td className="text-center tabular-nums text-gray-700">
+                {r.standing.played}
+              </td>
+              <td className="text-center tabular-nums text-gray-700">
+                {r.standing.goalsDiff > 0
+                  ? `+${r.standing.goalsDiff}`
+                  : r.standing.goalsDiff}
+              </td>
+              <td className="text-right pr-3 font-bold tabular-nums text-gray-900">
+                {r.standing.points}
+              </td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
   );
 }
 

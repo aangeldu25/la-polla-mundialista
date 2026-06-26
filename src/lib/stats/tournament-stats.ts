@@ -135,6 +135,35 @@ export function computeAllRealStandings(
   return out;
 }
 
+export interface ThirdPlaceRow {
+  group: string;
+  standing: TeamStanding;
+  qualifying: boolean; // entre los mejores 8 (clasificación provisional)
+}
+
+// Ranking de los 12 terceros de cada grupo, ordenado por criterios FIFA
+// (puntos → diferencia de gol → goles a favor → orden de TLA como desempate
+// final). Los 8 primeros con al menos un partido jugado clasifican a R32.
+export function computeBestThirds(allMatches: Match[]): ThirdPlaceRow[] {
+  const thirds: ThirdPlaceRow[] = [];
+  for (const g of Object.keys(WC2026_GROUPS)) {
+    const { standings } = computeRealGroupStandings(g, allMatches);
+    const third = standings[2]; // 3er puesto del grupo
+    if (third) thirds.push({ group: g, standing: third, qualifying: false });
+  }
+  // Ordenar por criterios FIFA (mismo comparador que las tablas de grupo)
+  thirds.sort((a, b) => compareStandings(a.standing, b.standing));
+  // Marcar los 8 mejores con partidos jugados como clasificados provisionales
+  let marked = 0;
+  for (const row of thirds) {
+    if (marked < 8 && row.standing.played > 0) {
+      row.qualifying = true;
+      marked++;
+    }
+  }
+  return thirds;
+}
+
 export interface TournamentSummary {
   matchesPlayed: number;
   matchesTotal: number;
