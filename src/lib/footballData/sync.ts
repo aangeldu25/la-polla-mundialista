@@ -183,33 +183,46 @@ export async function syncFixture(): Promise<SyncResult> {
       const mappedStage = mapStage(m.stage);
       stagesFromApi[mappedStage ?? "UNKNOWN"] =
         (stagesFromApi[mappedStage ?? "UNKNOWN"] ?? 0) + 1;
-      if (!homeTeam && bracket?.homeLabel) labelsAssigned++;
+      // Football-Data a veces "adivina" los equipos de una eliminatoria ANTES
+      // de que se jueguen (cruces provisionales y frecuentemente errados, p.ej.
+      // colocar al 1° de un grupo en el slot de otro). Para partidos de
+      // eliminatoria aún NO jugados conservamos las etiquetas oficiales del
+      // bracket ("1° Grupo E", "3° de A/B/C/D/F") e ignoramos esos equipos: la
+      // proyección real (tabla de grupos + Anexo C de la FIFA) los resuelve en
+      // el cliente. En cuanto el partido va LIVE/FINISHED usamos el equipo real.
+      const playedKnockout =
+        newStatus === "LIVE" || newStatus === "FINISHED";
+      const keepBracketLabels =
+        mappedStage !== "GROUP" && !playedKnockout && !!bracket;
+      const effHome = keepBracketLabels ? null : homeTeam;
+      const effAway = keepBracketLabels ? null : awayTeam;
+      if (!effHome && bracket?.homeLabel) labelsAssigned++;
 
       const next: Match = {
         id,
         footballDataId: m.id,
         matchNumber,
-        stage: mapStage(m.stage),
+        stage: mappedStage,
         group: parseGroup(m.group),
         matchday: m.matchday ?? undefined,
         utcDate: m.utcDate,
         status: newStatus,
-        homeTeam: homeTeam ?? {
+        homeTeam: effHome ?? {
           id: "TBD",
           name: bracket?.homeLabel ?? "Por definir",
           shortName: bracket?.homeLabel ?? "TBD",
           tla: "",
           crest: "",
         },
-        awayTeam: awayTeam ?? {
+        awayTeam: effAway ?? {
           id: "TBD",
           name: bracket?.awayLabel ?? "Por definir",
           shortName: bracket?.awayLabel ?? "TBD",
           tla: "",
           crest: "",
         },
-        homeLabel: homeTeam ? undefined : bracket?.homeLabel,
-        awayLabel: awayTeam ? undefined : bracket?.awayLabel,
+        homeLabel: effHome ? undefined : bracket?.homeLabel,
+        awayLabel: effAway ? undefined : bracket?.awayLabel,
         score: {
           homeFullTime: m.score.fullTime?.home ?? null,
           awayFullTime: m.score.fullTime?.away ?? null,
