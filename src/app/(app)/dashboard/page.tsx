@@ -14,6 +14,12 @@ import { Card } from "@/components/ui/Card";
 import { Flag } from "@/components/ui/Flag";
 import { MatchCard } from "@/components/partidos/MatchCard";
 import { PredictionModal } from "@/components/predictions/PredictionModal";
+import { computeRealR32Projection } from "@/lib/stats/r32-projection";
+import { useDerivedBracket } from "@/hooks/useDerivedBracket";
+import {
+  evalStructureMatch,
+  teamsInRoundFrom,
+} from "@/lib/scoring/structure-calc";
 import { TEAMS_BY_TLA } from "@/lib/constants/wc2026-teams";
 import type { Match, UserProfile } from "@/types/domain";
 import { SCORING } from "@/types/domain";
@@ -24,6 +30,7 @@ export default function DashboardPage() {
   const { memberUids } = useActivePolla();
   const profiles = useProfilesForUids(memberUids);
   const { predictions } = useMyPredictions(user?.uid);
+  const { bracket: derivedBracket } = useDerivedBracket(user?.uid);
   const [matches, setMatches] = useState<Match[]>([]);
   const [selected, setSelected] = useState<Match | null>(null);
 
@@ -114,6 +121,13 @@ export default function DashboardPage() {
       return isSameDay(new Date(m.utcDate), today);
     });
   }, [matches]);
+
+  // Proyección real de clasificados a R32 (para mostrar equipos en vez de
+  // etiquetas en los partidos de hoy, igual que en la sección Partidos).
+  const r32Projection = useMemo(
+    () => computeRealR32Projection(matches),
+    [matches],
+  );
 
   const favTeam = profile?.favoriteTeamTla
     ? TEAMS_BY_TLA[profile.favoriteTeamTla]
@@ -266,14 +280,55 @@ export default function DashboardPage() {
           </Card>
         ) : (
           <div className="grid md:grid-cols-2 gap-3">
-            {todayMatches.map((m) => (
-              <MatchCard
-                key={m.id}
-                match={m}
-                prediction={predictions.get(m.id)}
-                onClick={() => setSelected(m)}
-              />
-            ))}
+            {todayMatches.map((m) => {
+              const proj =
+                m.stage === "ROUND_OF_32" &&
+                m.matchNumber !== undefined &&
+                !(m.homeTeam.tla && m.awayTeam.tla)
+                  ? r32Projection.get(m.matchNumber)
+                  : undefined;
+              const userSlot =
+                m.stage !== "GROUP" && m.matchNumber !== undefined
+                  ? derivedBracket.get(m.matchNumber)
+                  : undefined;
+              const structure =
+                userSlot && m.homeTeam.tla && m.awayTeam.tla
+                  ? evalStructureMatch(
+                      m.stage,
+                      userSlot.homeTla,
+                      userSlot.awayTla,
+                      m.homeTeam.tla,
+                      m.awayTeam.tla,
+                      teamsInRoundFrom(
+                        matches.filter(
+                          (x) =>
+                            x.stage === m.stage &&
+                            x.homeTeam.tla &&
+                            x.awayTeam.tla,
+                        ),
+                      ),
+                    )
+                  : null;
+              return (
+                <MatchCard
+                  key={m.id}
+                  match={m}
+                  prediction={predictions.get(m.id)}
+                  onClick={() => setSelected(m)}
+                  structure={structure}
+                  projectedHome={
+                    proj?.homeTla
+                      ? { tla: proj.homeTla, confirmed: proj.homeConfirmed }
+                      : null
+                  }
+                  projectedAway={
+                    proj?.awayTla
+                      ? { tla: proj.awayTla, confirmed: proj.awayConfirmed }
+                      : null
+                  }
+                />
+              );
+            })}
           </div>
         )}
       </div>
