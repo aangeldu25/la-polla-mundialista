@@ -389,7 +389,6 @@ export default function PartidosPage() {
                   const structure =
                     userSlot && m.homeTeam.tla && m.awayTeam.tla
                       ? evalStructureMatch(
-                          m.stage,
                           userSlot.homeTla,
                           userSlot.awayTla,
                           m.homeTeam.tla,

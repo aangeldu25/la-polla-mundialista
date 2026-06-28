@@ -338,30 +338,30 @@ export function PredictionModal({
           </div>
         )}
 
-        {/* Referencia: tu bracket (pequeño y difuminado) — solo para estructura */}
+        {/* Referencia: tu bracket — solo para estructura. La bandera va en full
+            color si tu pick coincide con el equipo real de la posición, y
+            semitransparente si no (una vez confirmado el equipo real). */}
         {hasRealTeams && hasBracketTeams && !locked && (
-          <div className="bg-gray-50 border border-gray-200 rounded-xl p-2.5 mb-4 opacity-80">
+          <div className="bg-gray-50 border border-gray-200 rounded-xl p-2.5 mb-4">
             <p className="text-[10px] font-bold uppercase tracking-wide text-gray-500 mb-1">
               ⚡ Según tu bracket · solo puntos de estructura
             </p>
             <div className="flex items-center justify-center gap-2 text-xs text-gray-700">
-              <span className="flex items-center gap-1">
-                {bracketHome && (
-                  <Flag iso2={bracketHome.iso2} size={14} alt={bracketHome.name} />
-                )}
-                <span className="font-medium">
-                  {bracketHome?.name ?? "—"}
-                </span>
-              </span>
+              <BracketPickChip
+                team={bracketHome}
+                evaluated={realHomeConfirmed}
+                correct={
+                  realHomeConfirmed && bracketHome?.tla === realHomeTla
+                }
+              />
               <span className="text-gray-400">vs</span>
-              <span className="flex items-center gap-1">
-                {bracketAway && (
-                  <Flag iso2={bracketAway.iso2} size={14} alt={bracketAway.name} />
-                )}
-                <span className="font-medium">
-                  {bracketAway?.name ?? "—"}
-                </span>
-              </span>
+              <BracketPickChip
+                team={bracketAway}
+                evaluated={realAwayConfirmed}
+                correct={
+                  realAwayConfirmed && bracketAway?.tla === realAwayTla
+                }
+              />
             </div>
           </div>
         )}
@@ -447,6 +447,44 @@ export function PredictionModal({
         />
       </div>
     </Modal>
+  );
+}
+
+// Chip del pick del usuario en su bracket (referencia de estructura): full
+// color si coincide con el equipo real de la posición, semitransparente si no.
+function BracketPickChip({
+  team,
+  evaluated,
+  correct,
+}: {
+  team?: { iso2: string; name: string; tla: string };
+  evaluated: boolean;
+  correct: boolean;
+}) {
+  if (!team) {
+    return <span className="font-medium text-gray-500">—</span>;
+  }
+  const dim = evaluated && !correct;
+  return (
+    <span
+      className={cn(
+        "flex items-center gap-1 transition-opacity",
+        dim && "opacity-40",
+      )}
+    >
+      <Flag iso2={team.iso2} size={14} alt={team.name} />
+      <span className={cn("font-medium", dim && "text-gray-500")}>
+        {team.name}
+      </span>
+      {evaluated && correct && (
+        <span
+          className="text-[9px] font-bold text-[var(--pmfu-mint)] bg-[var(--pmfu-mint)]/15 px-1 py-0.5 rounded-full"
+          title="Tu bracket acertó el equipo en esta posición"
+        >
+          ✓
+        </span>
+      )}
+    </span>
   );
 }
 

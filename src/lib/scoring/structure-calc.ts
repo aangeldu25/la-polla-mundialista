@@ -8,26 +8,10 @@
 //   - Clasificado: tu equipo llegó a la ronda, pero en otro cruce.
 // Jerarquía por equipo: Slot absorbe Clasificado.
 
-import type { MatchStage } from "@/types/domain";
-
-export const STRUCTURE_MULTIPLIER: Partial<Record<MatchStage, number>> = {
-  ROUND_OF_32: 2,
-  ROUND_OF_16: 2,
-  QUARTER_FINAL: 3,
-  SEMI_FINAL: 4,
-  THIRD_PLACE: 4,
-  FINAL: 5,
-};
+// Los puntos de estructura son PLANOS: NO llevan multiplicador de fase (a
+// diferencia de los puntos por marcador). Clasificado 2 · Slot 3 · Duelo
+// exacto 5, igual en todas las rondas.
 export const STRUCTURE_BASE = { classified: 2, slot: 3, exact: 5 };
-
-export function structurePointsForRound(round: MatchStage) {
-  const mult = STRUCTURE_MULTIPLIER[round] ?? 0;
-  return {
-    classified: STRUCTURE_BASE.classified * mult,
-    slot: STRUCTURE_BASE.slot * mult,
-    exact: STRUCTURE_BASE.exact * mult,
-  };
-}
 
 export type StructureKind = "exact" | "slot" | "classified" | null;
 
@@ -41,14 +25,13 @@ export interface StructureResult {
 // Evalúa una predicción de slot contra los equipos reales de ese cruce.
 // `teamsInRound` = todos los equipos (TLA) que efectivamente llegaron a la ronda.
 export function evalStructureMatch(
-  round: MatchStage,
   hPred: string | null | undefined,
   aPred: string | null | undefined,
   hActual: string | null | undefined,
   aActual: string | null | undefined,
   teamsInRound: Set<string>,
 ): StructureResult {
-  const pts = structurePointsForRound(round);
+  const pts = STRUCTURE_BASE;
 
   // Duelo exacto (absorbe Slot + Clasificado de ambos equipos).
   if (hPred && aPred && hPred === hActual && aPred === aActual) {

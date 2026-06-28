@@ -294,7 +294,6 @@ export default function DashboardPage() {
               const structure =
                 userSlot && m.homeTeam.tla && m.awayTeam.tla
                   ? evalStructureMatch(
-                      m.stage,
                       userSlot.homeTla,
                       userSlot.awayTla,
                       m.homeTeam.tla,

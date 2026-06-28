@@ -111,7 +111,6 @@ export async function scoreStructureForRound(
       const userSlot = derived.get(matchNum);
       if (!userSlot) continue;
       const res = evalStructureMatch(
-        round,
         userSlot.homeTla,
         userSlot.awayTla,
         actualMatch.homeTeam.tla,
