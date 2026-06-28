@@ -184,10 +184,6 @@ export function PredictionModal({
         );
         return;
       }
-      if (hasBracketTeams && !bracketMatchesReal && !advancingTla) {
-        setError("Empate: elige también quién avanza en tu bracket.");
-        return;
-      }
     }
 
     setSaving(true);
@@ -367,33 +363,6 @@ export function PredictionModal({
                 </span>
               </span>
             </div>
-            {/* Si la llave real difiere de tu bracket y hay empate, pide el
-                avance de TU bracket por separado */}
-            {isKnockout &&
-              home === away &&
-              !bracketMatchesReal && (
-                <div className="mt-2">
-                  <p className="text-[10px] font-semibold text-gray-600 mb-1.5">
-                    ¿Y quién avanza en tu bracket?
-                  </p>
-                  <div className="grid grid-cols-2 gap-2">
-                    <AdvanceButton
-                      tla={bracketHome?.tla ?? ""}
-                      label={bracketHome?.name ?? "—"}
-                      iso2={bracketHome?.iso2}
-                      selected={advancingTla === bracketHome?.tla}
-                      onClick={() => setAdvancingTla(bracketHome?.tla ?? null)}
-                    />
-                    <AdvanceButton
-                      tla={bracketAway?.tla ?? ""}
-                      label={bracketAway?.name ?? "—"}
-                      iso2={bracketAway?.iso2}
-                      selected={advancingTla === bracketAway?.tla}
-                      onClick={() => setAdvancingTla(bracketAway?.tla ?? null)}
-                    />
-                  </div>
-                </div>
-              )}
           </div>
         )}
 
@@ -519,16 +488,6 @@ function TeamColumn({
         </p>
         {iso2 && (
           <p className="text-xs text-gray-600 font-semibold">{tla}</p>
-        )}
-        {status === "confirmed" && (
-          <p className="mt-1 inline-block text-[10px] font-bold text-[var(--pmfu-mint)] bg-[var(--pmfu-mint)]/15 px-1.5 py-0.5 rounded-full">
-            ✓ Clasificado
-          </p>
-        )}
-        {provisional && (
-          <p className="mt-1 inline-block text-[10px] font-bold text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded-full">
-            Provisional
-          </p>
         )}
       </div>
     </div>

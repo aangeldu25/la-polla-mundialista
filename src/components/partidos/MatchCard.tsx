@@ -287,18 +287,6 @@ function TeamSide({
             >
               {proj.name}
             </p>
-            <p
-              className={cn(
-                "text-[10px] font-semibold flex items-center gap-1",
-                side === "away" && "justify-end",
-                projected?.confirmed
-                  ? "text-[var(--pmfu-mint)]"
-                  : "text-gray-400",
-              )}
-            >
-              {projected?.confirmed ? "✓ Clasificado" : "Provisional"}
-              <span className="text-gray-400 font-normal">· {displayLabel}</span>
-            </p>
           </>
         ) : (
           <p className="font-semibold text-sm text-gray-800 italic leading-tight">
