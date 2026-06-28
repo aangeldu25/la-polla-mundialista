@@ -7,6 +7,10 @@ import { TEAMS_BY_TLA } from "@/lib/constants/wc2026-teams";
 import { BRACKET_BY_MATCH_NUMBER } from "@/lib/constants/wc2026-bracket";
 import { venueForMatch } from "@/lib/constants/wc2026-fixture-venues";
 import type { Match, MatchPrediction } from "@/types/domain";
+import {
+  structureLabel,
+  type StructureResult,
+} from "@/lib/scoring/structure-calc";
 import { cn } from "@/lib/utils";
 
 export interface ProjectedSide {
@@ -20,6 +24,7 @@ export function MatchCard({
   onClick,
   projectedHome,
   projectedAway,
+  structure,
 }: {
   match: Match;
   prediction?: MatchPrediction;
@@ -28,6 +33,9 @@ export function MatchCard({
   // aún sin equipo oficial). confirmed = grupo cerrado; si no, provisional.
   projectedHome?: ProjectedSide | null;
   projectedAway?: ProjectedSide | null;
+  // Resultado de ESTRUCTURA del bracket del usuario para este cruce (solo
+  // eliminatorias, cuando los equipos reales ya quedaron fijos).
+  structure?: StructureResult | null;
 }) {
   const date = new Date(match.utcDate);
   const dateLine = format(date, "EEE d MMM", { locale: es });
@@ -151,6 +159,21 @@ export function MatchCard({
       </div>
 
       <PredictionBadge prediction={prediction} locked={locked} />
+
+      {structure && structure.points > 0 && (
+        <div
+          className={cn(
+            "mt-2 flex items-center justify-center gap-2 rounded-xl py-1.5 text-xs font-bold",
+            structure.exact
+              ? "bg-green-100/80 text-green-800 ring-1 ring-green-300/60"
+              : "bg-[var(--pmfu-cobalt)]/10 text-[var(--pmfu-cobalt)]",
+          )}
+        >
+          <span>🧩</span>
+          <span>Estructura: {structureLabel(structure)}</span>
+          <span className="font-extrabold">+{structure.points} pts</span>
+        </div>
+      )}
 
       {venueLine && (
         <div className="text-xs text-gray-700 text-center font-medium border-t border-gray-200/60 pt-2">

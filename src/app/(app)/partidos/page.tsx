@@ -17,6 +17,11 @@ import type { Match, MatchStage } from "@/types/domain";
 import { STAGE_LABEL_ES, STAGE_ORDER } from "@/lib/constants/stages";
 import { MatchCard } from "@/components/partidos/MatchCard";
 import { computeRealR32Projection } from "@/lib/stats/r32-projection";
+import { useDerivedBracket } from "@/hooks/useDerivedBracket";
+import {
+  evalStructureMatch,
+  teamsInRoundFrom,
+} from "@/lib/scoring/structure-calc";
 import { PredictionModal } from "@/components/predictions/PredictionModal";
 import { SubscribeCalendarCard } from "@/components/calendar/SubscribeCalendarCard";
 import { BracketTree } from "@/components/partidos/BracketTree";
@@ -128,6 +133,7 @@ function consolidateMatches(
 export default function PartidosPage() {
   const { user } = useAuth();
   const { predictions } = useMyPredictions(user?.uid);
+  const { bracket: derivedBracket } = useDerivedBracket(user?.uid);
   const [rawMatches, setRawMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<Filter>("UPCOMING");
@@ -358,33 +364,60 @@ export default function PartidosPage() {
               {STAGE_LABEL_ES[stage]}
             </h2>
             <div className="grid md:grid-cols-2 gap-3">
-              {ms.map((m) => {
-                // Solo proyectamos R32 (slots de grupos) sin equipo oficial aún
-                const proj =
-                  m.stage === "ROUND_OF_32" &&
-                  m.matchNumber !== undefined &&
-                  !(m.homeTeam.tla && m.awayTeam.tla)
-                    ? r32Projection.get(m.matchNumber)
-                    : undefined;
-                return (
-                  <MatchCard
-                    key={m.id}
-                    match={m}
-                    prediction={predictions.get(m.id)}
-                    onClick={() => setSelected(m)}
-                    projectedHome={
-                      proj?.homeTla
-                        ? { tla: proj.homeTla, confirmed: proj.homeConfirmed }
-                        : null
-                    }
-                    projectedAway={
-                      proj?.awayTla
-                        ? { tla: proj.awayTla, confirmed: proj.awayConfirmed }
-                        : null
-                    }
-                  />
-                );
-              })}
+              {(() => {
+                // Equipos REALES que llegaron a esta ronda (cruces ya definidos),
+                // para evaluar los puntos de estructura del bracket del usuario.
+                const teamsInRound =
+                  stage === "GROUP"
+                    ? new Set<string>()
+                    : teamsInRoundFrom(
+                        ms.filter((x) => x.homeTeam.tla && x.awayTeam.tla),
+                      );
+                return ms.map((m) => {
+                  // Solo proyectamos R32 (slots de grupos) sin equipo oficial aún
+                  const proj =
+                    m.stage === "ROUND_OF_32" &&
+                    m.matchNumber !== undefined &&
+                    !(m.homeTeam.tla && m.awayTeam.tla)
+                      ? r32Projection.get(m.matchNumber)
+                      : undefined;
+                  // Estructura: solo eliminatorias con equipos reales fijos.
+                  const userSlot =
+                    m.stage !== "GROUP" && m.matchNumber !== undefined
+                      ? derivedBracket.get(m.matchNumber)
+                      : undefined;
+                  const structure =
+                    userSlot && m.homeTeam.tla && m.awayTeam.tla
+                      ? evalStructureMatch(
+                          m.stage,
+                          userSlot.homeTla,
+                          userSlot.awayTla,
+                          m.homeTeam.tla,
+                          m.awayTeam.tla,
+                          teamsInRound,
+                        )
+                      : null;
+                  return (
+                    <MatchCard
+                      key={m.id}
+                      match={m}
+                      prediction={predictions.get(m.id)}
+                      onClick={() => setSelected(m)}
+                      structure={structure}
+                      projectedHome={
+                        proj?.homeTla
+                          ? { tla: proj.homeTla, confirmed: proj.homeConfirmed }
+                          : null
+                      }
+                      projectedAway={
+                        proj?.awayTla
+                          ? { tla: proj.awayTla, confirmed: proj.awayConfirmed }
+                          : null
+                      }
+                    />
+                  );
+                });
+              })()}
             </div>
           </section>
         ))}

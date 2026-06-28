@@ -15,28 +15,8 @@ import { adminDb } from "@/lib/firebase/admin";
 import { FieldValue } from "firebase-admin/firestore";
 import { computeAllGroupStandings } from "@/lib/standings/group-standings";
 import { computeDerivedBracket } from "@/lib/standings/knockout-cascade";
+import { evalStructureMatch } from "@/lib/scoring/structure-calc";
 import type { Match, MatchPrediction, MatchStage } from "@/types/domain";
-
-const STAGE_MULTIPLIER: Partial<Record<MatchStage, number>> = {
-  ROUND_OF_32: 2,
-  ROUND_OF_16: 2,
-  QUARTER_FINAL: 3,
-  SEMI_FINAL: 4,
-  THIRD_PLACE: 4,
-  FINAL: 5,
-};
-const BASE_CLASSIFIED = 2;
-const BASE_SLOT = 3;
-const BASE_EXACT = 5;
-
-function pointsForRound(round: MatchStage) {
-  const mult = STAGE_MULTIPLIER[round] ?? 0;
-  return {
-    classified: BASE_CLASSIFIED * mult,
-    slot: BASE_SLOT * mult,
-    exact: BASE_EXACT * mult,
-  };
-}
 
 export interface RoundScoringResult {
   round: MatchStage;
@@ -74,10 +54,13 @@ export async function scoreStructureForRound(
       reason: "no-matches-in-round",
     };
   }
-  const allTeamsKnown = roundMatches.every(
+  // Progresivo: solo puntuamos los cruces cuyos equipos REALES ya quedaron
+  // fijos (al jugarse / definirse). Los que aún son etiquetas se omiten y se
+  // acreditarán en un sync posterior. Idempotente vía structurePointsByRound.
+  const resolvedMatches = roundMatches.filter(
     (m) => !!m.homeTeam.tla && !!m.awayTeam.tla,
   );
-  if (!allTeamsKnown) {
+  if (resolvedMatches.length === 0) {
     return {
       round,
       processedUsers: 0,
@@ -88,13 +71,12 @@ export async function scoreStructureForRound(
   }
 
   const teamsInRound = new Set<string>();
-  for (const m of roundMatches) {
+  for (const m of resolvedMatches) {
     teamsInRound.add(m.homeTeam.tla);
     teamsInRound.add(m.awayTeam.tla);
   }
 
   const usersSnap = await adminDb.collection("users").get();
-  const pts = pointsForRound(round);
   const batch = adminDb.batch();
   let totalDelta = 0;
   let processedUsers = 0;
@@ -121,33 +103,22 @@ export async function scoreStructureForRound(
     const standings = computeAllGroupStandings(allMatches, predictionsMap);
     const derived = computeDerivedBracket(allMatches, predictionsMap, standings);
 
-    // Calcular puntos de la ronda para este usuario
+    // Calcular puntos de la ronda para este usuario (solo cruces resueltos)
     let userRoundPoints = 0;
-    for (const actualMatch of roundMatches) {
+    for (const actualMatch of resolvedMatches) {
       const matchNum = actualMatch.matchNumber;
       if (matchNum === undefined) continue;
       const userSlot = derived.get(matchNum);
       if (!userSlot) continue;
-      const hPred = userSlot.homeTla;
-      const aPred = userSlot.awayTla;
-      const hActual = actualMatch.homeTeam.tla;
-      const aActual = actualMatch.awayTeam.tla;
-
-      // Duelo Exacto (absorbe todo)
-      if (hPred && aPred && hPred === hActual && aPred === aActual) {
-        userRoundPoints += pts.exact;
-        continue;
-      }
-
-      // Per-equipo: Slot absorbe Clasificado
-      if (hPred) {
-        if (hPred === hActual) userRoundPoints += pts.slot;
-        else if (teamsInRound.has(hPred)) userRoundPoints += pts.classified;
-      }
-      if (aPred) {
-        if (aPred === aActual) userRoundPoints += pts.slot;
-        else if (teamsInRound.has(aPred)) userRoundPoints += pts.classified;
-      }
+      const res = evalStructureMatch(
+        round,
+        userSlot.homeTla,
+        userSlot.awayTla,
+        actualMatch.homeTeam.tla,
+        actualMatch.awayTeam.tla,
+        teamsInRound,
+      );
+      userRoundPoints += res.points;
     }
 
     const previously = userData.structurePointsByRound?.[round] ?? 0;
