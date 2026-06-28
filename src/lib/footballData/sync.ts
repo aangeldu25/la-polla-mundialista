@@ -103,6 +103,50 @@ export interface SyncResult {
   structureAwarded: number;
 }
 
+// Calendario OFICIAL FIFA de las eliminatorias: número de partido -> kickoff
+// (UTC). Verificado contra fifa.com/match-centre. La numeración oficial NO es
+// cronológica, por eso emparejamos cada partido de Football-Data con su número
+// por la hora exacta de inicio (en vez de un contador por orden de fecha).
+const KO_OFFICIAL_TIMES: Record<number, string> = {
+  // Dieciseisavos (R32)
+  73: "2026-06-28T19:00:00Z",
+  74: "2026-06-29T20:30:00Z",
+  75: "2026-06-30T01:00:00Z",
+  76: "2026-06-29T17:00:00Z",
+  77: "2026-06-30T21:00:00Z",
+  78: "2026-06-30T17:00:00Z",
+  79: "2026-07-01T01:00:00Z",
+  80: "2026-07-01T16:00:00Z",
+  81: "2026-07-02T00:00:00Z",
+  82: "2026-07-01T20:00:00Z",
+  83: "2026-07-02T23:00:00Z",
+  84: "2026-07-02T19:00:00Z",
+  85: "2026-07-03T03:00:00Z",
+  86: "2026-07-03T22:00:00Z",
+  87: "2026-07-04T01:30:00Z", // Colombia vs Ghana — Arrowhead, 9:30pm ET
+  88: "2026-07-03T18:00:00Z",
+  // Octavos (R16)
+  89: "2026-07-04T21:00:00Z",
+  90: "2026-07-04T17:00:00Z",
+  91: "2026-07-05T20:00:00Z",
+  92: "2026-07-06T00:00:00Z",
+  93: "2026-07-06T19:00:00Z",
+  94: "2026-07-07T00:00:00Z",
+  95: "2026-07-07T16:00:00Z",
+  96: "2026-07-07T20:00:00Z",
+  // Cuartos
+  97: "2026-07-09T20:00:00Z",
+  98: "2026-07-10T19:00:00Z",
+  99: "2026-07-11T21:00:00Z",
+  100: "2026-07-12T01:00:00Z",
+  // Semifinales
+  101: "2026-07-14T19:00:00Z",
+  102: "2026-07-15T19:00:00Z",
+  // Tercer puesto y Final
+  103: "2026-07-18T21:00:00Z",
+  104: "2026-07-19T19:00:00Z",
+};
+
 export async function syncFixture(): Promise<SyncResult> {
   const data = await fetchWorldCupMatches();
   const now = new Date().toISOString();
@@ -114,27 +158,41 @@ export async function syncFixture(): Promise<SyncResult> {
   const rawStagesSeen = new Set<string>();
   const sample: SyncResult["sample"] = [];
 
-  // 1) Asignar matchNumber FIFA (1-104) por orden cronológico dentro de cada fase.
+  // 1) Asignar matchNumber FIFA (1-104).
+  // Fase de grupos (1-72): orden cronológico, que sí equivale a la numeración.
+  // Eliminatorias (73-104): el número oficial FIFA NO es cronológico (p.ej.
+  // Colombia vs Ghana es el #87 y se juega 9:30pm ET, pero por hora caería en
+  // otra posición). Football-Data tampoco numera oficialmente, así que
+  // asignamos el número emparejando el kickoff con la tabla oficial FIFA.
   const sorted = [...data.matches].sort(
     (a, b) =>
       new Date(a.utcDate).getTime() - new Date(b.utcDate).getTime() ||
       a.id - b.id,
   );
+  const koNumberByTime = new Map<string, number>();
+  for (const [num, t] of Object.entries(KO_OFFICIAL_TIMES)) {
+    koNumberByTime.set(t, Number(num));
+  }
   const matchNumbers = new Map<number, number>();
   let groupCounter = 1;
-  let r32Counter = 73;
-  let r16Counter = 89;
-  let qfCounter = 97;
-  let sfCounter = 101;
+  // Contadores de respaldo por fase: solo se usan si el kickoff de un partido
+  // de eliminatoria no coincide con la tabla oficial (cambio de horario, etc.).
+  const koFallback: Record<string, number> = {
+    ROUND_OF_32: 73,
+    ROUND_OF_16: 89,
+    QUARTER_FINAL: 97,
+    SEMI_FINAL: 101,
+    THIRD_PLACE: 103,
+    FINAL: 104,
+  };
   for (const m of sorted) {
     const stage = mapStage(m.stage);
-    if (stage === "GROUP") matchNumbers.set(m.id, groupCounter++);
-    else if (stage === "ROUND_OF_32") matchNumbers.set(m.id, r32Counter++);
-    else if (stage === "ROUND_OF_16") matchNumbers.set(m.id, r16Counter++);
-    else if (stage === "QUARTER_FINAL") matchNumbers.set(m.id, qfCounter++);
-    else if (stage === "SEMI_FINAL") matchNumbers.set(m.id, sfCounter++);
-    else if (stage === "THIRD_PLACE") matchNumbers.set(m.id, 103);
-    else if (stage === "FINAL") matchNumbers.set(m.id, 104);
+    if (stage === "GROUP") {
+      matchNumbers.set(m.id, groupCounter++);
+    } else if (stage) {
+      const official = koNumberByTime.get(m.utcDate);
+      matchNumbers.set(m.id, official ?? koFallback[stage]++);
+    }
   }
 
   // 2) Detectar partidos recién finalizados antes de sobrescribir.
@@ -387,7 +445,7 @@ async function seedBronzeAndFinal(
       docId: `BRACKET-BRONZE-${BRACKET_BRONZE.matchNumber}`,
       matchNumber: BRACKET_BRONZE.matchNumber,
       stage: "THIRD_PLACE",
-      utcDate: "2026-07-18T18:00:00Z",
+      utcDate: KO_OFFICIAL_TIMES[BRACKET_BRONZE.matchNumber],
       homeLabel: BRACKET_BRONZE.homeLabel,
       awayLabel: BRACKET_BRONZE.awayLabel,
     },
@@ -395,7 +453,7 @@ async function seedBronzeAndFinal(
       docId: `BRACKET-FINAL-${BRACKET_FINAL.matchNumber}`,
       matchNumber: BRACKET_FINAL.matchNumber,
       stage: "FINAL",
-      utcDate: "2026-07-19T19:00:00Z",
+      utcDate: KO_OFFICIAL_TIMES[BRACKET_FINAL.matchNumber],
       homeLabel: BRACKET_FINAL.homeLabel,
       awayLabel: BRACKET_FINAL.awayLabel,
     },
@@ -459,7 +517,10 @@ async function seedR32(
       footballDataId: -slot.matchNumber, // sentinel negativo
       matchNumber: slot.matchNumber,
       stage: "ROUND_OF_32",
-      utcDate: R32_DATES[slot.matchNumber] ?? "2026-06-28T19:00:00Z",
+      utcDate:
+        KO_OFFICIAL_TIMES[slot.matchNumber] ??
+        R32_DATES[slot.matchNumber] ??
+        "2026-06-28T19:00:00Z",
       status: "SCHEDULED",
       homeTeam: {
         id: "TBD",
