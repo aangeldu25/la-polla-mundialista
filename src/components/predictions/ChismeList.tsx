@@ -26,6 +26,7 @@ import {
   computeAllGroupStandings,
 } from "@/lib/standings/group-standings";
 import { computeDerivedBracket } from "@/lib/standings/knockout-cascade";
+import { computeRealR32Projection } from "@/lib/stats/r32-projection";
 import { useActivePolla } from "@/components/polla/ActivePollaProvider";
 import { cn } from "@/lib/utils";
 
@@ -101,6 +102,22 @@ export function ChismeList({
     return result;
   }, [needsDerivation, allMatches, allUserPreds, match.matchNumber]);
 
+  // Equipo REAL (confirmado) que quedó en cada posición del cruce, contra el
+  // que evaluamos el acierto de cada usuario: el oficial si el partido ya tiene
+  // equipos, o la proyección real cuando los grupos ya cerraron (confirmada).
+  const realProjection = useMemo(
+    () => (needsDerivation ? computeRealR32Projection(allMatches) : null),
+    [needsDerivation, allMatches],
+  );
+  const realSlot =
+    match.matchNumber !== undefined
+      ? realProjection?.get(match.matchNumber)
+      : undefined;
+  const actualHomeTla =
+    officialHomeTla ?? (realSlot?.homeConfirmed ? realSlot.homeTla : null);
+  const actualAwayTla =
+    officialAwayTla ?? (realSlot?.awayConfirmed ? realSlot.awayTla : null);
+
   return (
     <section className="border-t border-gray-200 pt-4 mt-4">
       <div className="flex items-center justify-between mb-3">
@@ -130,8 +147,8 @@ export function ChismeList({
                 match={match}
                 derivedTeams={derivedTeamsByUid.get(p.uid)}
                 showDerivedTeams={needsDerivation}
-                officialHomeTla={officialHomeTla}
-                officialAwayTla={officialAwayTla}
+                actualHomeTla={actualHomeTla}
+                actualAwayTla={actualAwayTla}
               />
             ))}
         </ul>
@@ -146,16 +163,17 @@ function PredictionRow({
   match,
   derivedTeams,
   showDerivedTeams,
-  officialHomeTla,
-  officialAwayTla,
+  actualHomeTla,
+  actualAwayTla,
 }: {
   p: MatchPrediction;
   profile?: UserProfile;
   match: Match;
   derivedTeams?: { homeTla: string | null; awayTla: string | null };
   showDerivedTeams: boolean;
-  officialHomeTla: string | null;
-  officialAwayTla: string | null;
+  // Equipo real (confirmado) que quedó en cada posición; null si aún no se define.
+  actualHomeTla: string | null;
+  actualAwayTla: string | null;
 }) {
   const name = profile?.displayName ?? "Anónimo";
   const isExact =
@@ -163,35 +181,23 @@ function PredictionRow({
     match.score.homeFullTime === p.homeScore &&
     match.score.awayFullTime === p.awayScore;
 
-  // Lo que el usuario predijo (de su bracket cascade)
+  // Lo que el usuario predijo para cada posición (de su bracket cascade)
   const predictedHome = derivedTeams?.homeTla
     ? TEAMS_BY_TLA[derivedTeams.homeTla]
     : null;
   const predictedAway = derivedTeams?.awayTla
     ? TEAMS_BY_TLA[derivedTeams.awayTla]
     : null;
-  // El equipo oficial (cuando ya hubo sorteo / cascade FIFA real)
-  const officialHome = officialHomeTla ? TEAMS_BY_TLA[officialHomeTla] : null;
-  const officialAway = officialAwayTla ? TEAMS_BY_TLA[officialAwayTla] : null;
 
-  // Cuál mostrar como principal y qué pick es "fallido" referencia.
-  // Si hay oficial → mostrar oficial; si la predicción difiere → tacharla pequeña.
-  // Si hay oficial y coinciden → solo un ✓ pequeño.
-  // Si no hay oficial → mostrar predicción normal.
-  const homeMain = officialHome ?? predictedHome;
-  const awayMain = officialAway ?? predictedAway;
-  const homeHit =
-    !!officialHome && !!predictedHome && officialHome.tla === predictedHome.tla;
-  const awayHit =
-    !!officialAway && !!predictedAway && officialAway.tla === predictedAway.tla;
-  const homeMissPick =
-    !!officialHome && !!predictedHome && officialHome.tla !== predictedHome.tla
-      ? predictedHome
-      : null;
-  const awayMissPick =
-    !!officialAway && !!predictedAway && officialAway.tla !== predictedAway.tla
-      ? predictedAway
-      : null;
+  // Mostramos el pick del usuario. Cuando el equipo real de esa posición ya
+  // está definido, evaluamos el acierto: full color si coincide, bandera
+  // semitransparente si no.
+  const homeEvaluated = !!actualHomeTla;
+  const awayEvaluated = !!actualAwayTla;
+  const homeCorrect =
+    homeEvaluated && !!predictedHome && predictedHome.tla === actualHomeTla;
+  const awayCorrect =
+    awayEvaluated && !!predictedAway && predictedAway.tla === actualAwayTla;
 
   return (
     <li
@@ -230,40 +236,23 @@ function PredictionRow({
         {isExact && <span title="Marcador exacto">🎯</span>}
       </div>
 
-      {/* Para eliminatorias: mostrar los equipos del bracket de este usuario */}
-      {showDerivedTeams && (homeMain || awayMain || homeMissPick || awayMissPick) && (
+      {/* Para eliminatorias: los equipos que ESTE usuario predijo en el cruce.
+          Bandera full color si acertó la posición; semitransparente si no. */}
+      {showDerivedTeams && (predictedHome || predictedAway) && (
         <div className="pl-11">
           <div className="flex items-center gap-2 text-xs text-gray-700 flex-wrap">
-            <TeamChip team={homeMain} hit={homeHit} />
+            <TeamChip
+              team={predictedHome}
+              evaluated={homeEvaluated}
+              correct={homeCorrect}
+            />
             <span className="text-gray-400">vs</span>
-            <TeamChip team={awayMain} hit={awayHit} />
+            <TeamChip
+              team={predictedAway}
+              evaluated={awayEvaluated}
+              correct={awayCorrect}
+            />
           </div>
-          {(homeMissPick || awayMissPick) && (
-            <div className="flex items-center gap-2 text-[10px] text-gray-500 mt-0.5 opacity-70">
-              <span className="font-semibold">Su pick:</span>
-              <span className="line-through flex items-center gap-1">
-                {homeMissPick ? (
-                  <>
-                    <Flag iso2={homeMissPick.iso2} size={10} alt={homeMissPick.name} />
-                    {homeMissPick.tla}
-                  </>
-                ) : (
-                  <span>—</span>
-                )}
-              </span>
-              <span className="opacity-50">vs</span>
-              <span className="line-through flex items-center gap-1">
-                {awayMissPick ? (
-                  <>
-                    <Flag iso2={awayMissPick.iso2} size={10} alt={awayMissPick.name} />
-                    {awayMissPick.tla}
-                  </>
-                ) : (
-                  <span>—</span>
-                )}
-              </span>
-            </div>
-          )}
         </div>
       )}
     </li>
@@ -272,22 +261,35 @@ function PredictionRow({
 
 function TeamChip({
   team,
-  hit,
+  evaluated,
+  correct,
 }: {
   team: { iso2: string; name: string; tla: string } | null;
-  hit: boolean;
+  // evaluated = el equipo real de la posición ya se definió.
+  evaluated: boolean;
+  // correct = el pick del usuario coincide con ese equipo real.
+  correct: boolean;
 }) {
   if (!team) {
     return <span className="italic text-gray-500">— por definir</span>;
   }
+  // Semitransparente cuando ya se sabe el equipo real y el usuario NO acertó.
+  const dim = evaluated && !correct;
   return (
-    <span className="flex items-center gap-1">
+    <span
+      className={cn(
+        "flex items-center gap-1 transition-opacity",
+        dim && "opacity-40",
+      )}
+    >
       <Flag iso2={team.iso2} size={14} alt={team.name} />
-      <span className="font-medium">{team.name}</span>
-      {hit && (
+      <span className={cn("font-medium", dim && "text-gray-500")}>
+        {team.name}
+      </span>
+      {evaluated && correct && (
         <span
           className="text-[9px] font-bold text-[var(--pmfu-mint)] bg-[var(--pmfu-mint)]/15 px-1 py-0.5 rounded-full"
-          title="Su bracket acertó este equipo"
+          title="Acertó el equipo en esta posición"
         >
           ✓
         </span>
