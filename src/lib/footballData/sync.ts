@@ -277,10 +277,16 @@ export async function syncFixture(): Promise<SyncResult> {
     await batch.commit();
   }
 
-  // 4) SIEMPRE sembrar R32 + Bronce + Final si faltan (idempotente).
+  // matchNumbers ya cubiertos por un doc REAL de Football-Data: no sembrar
+  // placeholders para esos (el doc real trae el horario y los datos correctos;
+  // los seeds usan fechas aproximadas que desincronizan los horarios).
+  const coveredByReal = new Set(matchNumbers.values());
+
+  // 4) Sembrar R32 + Bronce + Final SOLO si Football-Data no los provee.
   // Football-Data no siempre los provee con stages reconocibles.
   const bracketSeeded =
-    (await seedR32(now)) + (await seedBronzeAndFinal(now));
+    (await seedR32(now, coveredByReal)) +
+    (await seedBronzeAndFinal(now, coveredByReal));
 
   // 5) Calcular puntos por marcador para partidos que recién terminaron.
   let scoringResults: Array<{
@@ -363,7 +369,10 @@ const R32_DATES: Record<number, string> = {
   88: "2026-07-03T22:00:00Z",
 };
 
-async function seedBronzeAndFinal(now: string): Promise<number> {
+async function seedBronzeAndFinal(
+  now: string,
+  coveredByReal: Set<number>,
+): Promise<number> {
   const batch = adminDb.batch();
   let count = 0;
   const seeds: Array<{
@@ -392,6 +401,7 @@ async function seedBronzeAndFinal(now: string): Promise<number> {
     },
   ];
   for (const s of seeds) {
+    if (coveredByReal.has(s.matchNumber)) continue;
     const ref = adminDb.collection("matches").doc(s.docId);
     const snap = await ref.get();
     if (snap.exists) continue;
@@ -432,10 +442,14 @@ async function seedBronzeAndFinal(now: string): Promise<number> {
   return count;
 }
 
-async function seedR32(now: string): Promise<number> {
+async function seedR32(
+  now: string,
+  coveredByReal: Set<number>,
+): Promise<number> {
   const batch = adminDb.batch();
   let count = 0;
   for (const slot of BRACKET_R32) {
+    if (coveredByReal.has(slot.matchNumber)) continue;
     const docId = `BRACKET-R32-${slot.matchNumber}`;
     const ref = adminDb.collection("matches").doc(docId);
     const snap = await ref.get();
