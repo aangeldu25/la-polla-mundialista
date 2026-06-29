@@ -154,6 +154,8 @@ export async function syncFixture(): Promise<SyncResult> {
   let updated = 0;
   let labelsAssigned = 0;
   const finalizedNow: string[] = [];
+  // Partidos ya puntuados cuyo marcador cambió (corrección) → re-puntuar.
+  const rescoreForce: string[] = [];
   const stagesFromApi: Record<string, number> = {};
   const rawStagesSeen = new Set<string>();
   const sample: SyncResult["sample"] = [];
@@ -241,6 +243,7 @@ export async function syncFixture(): Promise<SyncResult> {
       const mappedStage = mapStage(m.stage);
       stagesFromApi[mappedStage ?? "UNKNOWN"] =
         (stagesFromApi[mappedStage ?? "UNKNOWN"] ?? 0) + 1;
+
       // Football-Data a veces "adivina" los equipos de una eliminatoria ANTES
       // de que se jueguen (cruces provisionales y frecuentemente errados, p.ej.
       // colocar al 1° de un grupo en el slot de otro). Para partidos de
@@ -255,6 +258,54 @@ export async function syncFixture(): Promise<SyncResult> {
       const effHome = keepBracketLabels ? null : homeTeam;
       const effAway = keepBracketLabels ? null : awayTeam;
       if (!effHome && bracket?.homeLabel) labelsAssigned++;
+
+      // Marcador del PARTIDO vs tanda de penales (separados). Cuando hubo
+      // definición por penales, Football-Data mete la tanda DENTRO de fullTime
+      // (ej. 5-6 = 1-1 + tanda). El marcador real del partido es
+      // regularTime + extraTime; la tanda la derivamos de fullTime − marcador
+      // (su campo `penalties` no es fiable, ej. 5-5).
+      const sc = m.score;
+      const isShootout = sc.duration === "PENALTY_SHOOTOUT";
+      const reg = sc.regularTime;
+      let playHome: number | null;
+      let playAway: number | null;
+      if (isShootout && reg && reg.home != null && reg.away != null) {
+        playHome = reg.home + (sc.extraTime?.home ?? 0);
+        playAway = reg.away + (sc.extraTime?.away ?? 0);
+      } else {
+        playHome = sc.fullTime?.home ?? null;
+        playAway = sc.fullTime?.away ?? null;
+      }
+      let penHome = sc.penalties?.home ?? null;
+      let penAway = sc.penalties?.away ?? null;
+      if (
+        isShootout &&
+        playHome !== null &&
+        playAway !== null &&
+        sc.fullTime?.home != null &&
+        sc.fullTime?.away != null
+      ) {
+        const dh = sc.fullTime.home - playHome;
+        const da = sc.fullTime.away - playAway;
+        // Solo si la diferencia es una tanda válida (no negativa y con ganador).
+        if (dh >= 0 && da >= 0 && dh !== da) {
+          penHome = dh;
+          penAway = da;
+        }
+      }
+
+      // Auto-sanación: si el partido ya estaba FINISHED y puntuado pero el
+      // marcador del PARTIDO cambió (p.ej. antes guardábamos la tanda dentro
+      // del marcador), re-puntuar con force para corregir los puntos.
+      if (
+        newStatus === "FINISHED" &&
+        prev?.status === "FINISHED" &&
+        prev.pointsCalculated &&
+        (prev.score.homeFullTime !== playHome ||
+          prev.score.awayFullTime !== playAway)
+      ) {
+        rescoreForce.push(id);
+      }
 
       const next: Match = {
         id,
@@ -282,13 +333,13 @@ export async function syncFixture(): Promise<SyncResult> {
         homeLabel: effHome ? undefined : bracket?.homeLabel,
         awayLabel: effAway ? undefined : bracket?.awayLabel,
         score: {
-          homeFullTime: m.score.fullTime?.home ?? null,
-          awayFullTime: m.score.fullTime?.away ?? null,
-          homeExtraTime: m.score.extraTime?.home ?? null,
-          awayExtraTime: m.score.extraTime?.away ?? null,
-          homePenalties: m.score.penalties?.home ?? null,
-          awayPenalties: m.score.penalties?.away ?? null,
-          winner: m.score.winner ?? null,
+          homeFullTime: playHome,
+          awayFullTime: playAway,
+          homeExtraTime: sc.extraTime?.home ?? null,
+          awayExtraTime: sc.extraTime?.away ?? null,
+          homePenalties: penHome,
+          awayPenalties: penAway,
+          winner: sc.winner ?? null,
         },
         liveMinute: newStatus === 'LIVE' ? (m.minute ?? null) : null,
         updatedAt: now,
@@ -359,6 +410,15 @@ export async function syncFixture(): Promise<SyncResult> {
       scoringResults = await scoreMatches(finalizedNow);
     } catch (e) {
       console.error("[sync] scoring error:", e);
+    }
+  }
+  // Re-puntuar (force) los partidos cuyo marcador se corrigió.
+  if (rescoreForce.length > 0) {
+    try {
+      const forced = await scoreMatches(rescoreForce, { force: true });
+      scoringResults = scoringResults.concat(forced);
+    } catch (e) {
+      console.error("[sync] re-scoring (force) error:", e);
     }
   }
   const totalPointsAwarded = scoringResults.reduce(

@@ -11,8 +11,12 @@ export interface FDTeam {
 export interface FDScore {
   winner: "HOME_TEAM" | "AWAY_TEAM" | "DRAW" | null;
   duration: "REGULAR" | "EXTRA_TIME" | "PENALTY_SHOOTOUT";
+  // OJO: en definiciones por penales, Football-Data mete la tanda DENTRO de
+  // fullTime (p.ej. 5-6 = 1-1 + tanda). regularTime/extraTime traen el marcador
+  // real del partido; usamos esos para el marcador y derivamos la tanda.
   fullTime: { home: number | null; away: number | null };
   halfTime?: { home: number | null; away: number | null };
+  regularTime?: { home: number | null; away: number | null };
   extraTime?: { home: number | null; away: number | null };
   penalties?: { home: number | null; away: number | null };
 }
