@@ -310,6 +310,14 @@ function TeamSide({
             >
               {proj.name}
             </p>
+            <p
+              className={cn(
+                "text-xs font-semibold",
+                projected?.confirmed ? "text-gray-600" : "text-gray-400",
+              )}
+            >
+              {proj.tla}
+            </p>
           </>
         ) : (
           <p className="font-semibold text-sm text-gray-800 italic leading-tight">

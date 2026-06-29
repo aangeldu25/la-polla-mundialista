@@ -237,11 +237,14 @@ export default function PartidosPage() {
       arr.push(m);
       map.set(m.stage, arr);
     }
-    // El orden de las etapas se mantiene igual (Grupos → Final). En
-    // "Terminados" solo invertimos los partidos DENTRO de cada etapa para
-    // mostrar el más reciente primero.
-    const entries = [...map.entries()].sort(
-      ([a], [b]) => STAGE_ORDER[a] - STAGE_ORDER[b],
+    // Por defecto las etapas van en orden cronológico (Grupos → Final). En
+    // "Terminados" invertimos TODO para que el partido más reciente quede
+    // arriba: etapas de la más nueva a la más vieja, y dentro de cada etapa el
+    // más reciente primero (orden cronológico descendente global).
+    const entries = [...map.entries()].sort(([a], [b]) =>
+      filter === "FINISHED"
+        ? STAGE_ORDER[b] - STAGE_ORDER[a]
+        : STAGE_ORDER[a] - STAGE_ORDER[b],
     );
     if (filter === "FINISHED") {
       for (const [, arr] of entries) {
