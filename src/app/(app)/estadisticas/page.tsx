@@ -30,6 +30,8 @@ import {
   RULE_CHANGES,
 } from "@/lib/stats/world-cup-history";
 import { useOpenfootballStats } from "@/hooks/useOpenfootballStats";
+import { useDetailedStats } from "@/hooks/useDetailedStats";
+import { DetailedStatsSections } from "@/components/stats/DetailedStatsSections";
 import type { Scorer, GoalGems } from "@/lib/stats/openfootball";
 import type { TeamStanding } from "@/lib/standings/group-standings";
 import { cn } from "@/lib/utils";
@@ -65,6 +67,9 @@ export default function EstadisticasPage() {
   );
   // Goleadores + joyas de goles (openfootball, vía API cacheada)
   const { scorers, gems, loading: ofLoading } = useOpenfootballStats();
+  // Estadísticas detalladas (posesión, tarjetas, faltas, disparos, xG) vía
+  // dataset abierto. Fire-and-forget: si no hay datos, las secciones se ocultan.
+  const { data: detailed, loading: detailedLoading } = useDetailedStats();
 
   if (loading) {
     return (
@@ -170,6 +175,9 @@ export default function EstadisticasPage() {
           {/* 4. Joyas de goles (openfootball) */}
           {gems && gems.totalGoals > 0 && <GoalGemsBlock gems={gems} />}
 
+          {/* Estadísticas detalladas (posesión, tarjetas, disparos, xG) */}
+          <DetailedStatsSections data={detailed} loading={detailedLoading} />
+
           {/* 5. Ataque y defensa */}
           <div className="grid md:grid-cols-2 gap-4">
             <Card>
@@ -231,8 +239,9 @@ export default function EstadisticasPage() {
           {/* Fuentes */}
           <p className="text-[11px] text-gray-500 text-center px-4">
             Marcadores y tablas en vivo vía Football-Data + FIFA. Goleadores y
-            detalle de goles vía openfootball (actualizado cada pocas horas).
-            Asistencias no disponibles en fuentes gratuitas.
+            detalle de goles vía openfootball. Posesión, tarjetas, faltas,
+            disparos y xG vía dataset abierto de la comunidad (datos de fifa.com,
+            actualizados a diario).
           </p>
         </div>
       )}
