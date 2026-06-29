@@ -221,7 +221,7 @@ export async function fetchDetailedStats(): Promise<DetailedStats | null> {
       arr: TeamDetailedStats[],
       val: (t: TeamDetailedStats) => number,
       dir: "asc" | "desc",
-      n = 8,
+      n = arr.length, // por defecto, TODOS los equipos (la UI los despliega)
     ): DetailedStatsLeader[] =>
       [...arr]
         .sort((x, y) => (dir === "desc" ? val(y) - val(x) : val(x) - val(y)))

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, type ReactNode } from "react";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Flag } from "@/components/ui/Flag";
 import { TEAMS_BY_TLA } from "@/lib/constants/wc2026-teams";
@@ -23,6 +24,34 @@ function TeamLabel({ tla, size = 16 }: { tla: string; size?: number }) {
   );
 }
 
+// Muestra `collapsed` filas y un botón para desplegar el resto (todos los
+// equipos), igual que el resto de rankings de la sección Stats.
+function Expandable({
+  items,
+  collapsed = 8,
+  label = "equipos",
+}: {
+  items: ReactNode[];
+  collapsed?: number;
+  label?: string;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const shown = expanded ? items : items.slice(0, collapsed);
+  return (
+    <>
+      <ul className="space-y-1">{shown}</ul>
+      {items.length > collapsed && (
+        <button
+          onClick={() => setExpanded((v) => !v)}
+          className="w-full mt-2 text-xs font-bold text-[var(--pmfu-cobalt)] py-2 rounded-xl hover:bg-[var(--pmfu-cobalt)]/5 transition-colors"
+        >
+          {expanded ? "Ver menos ▲" : `Ver los ${items.length} ${label} ▼`}
+        </button>
+      )}
+    </>
+  );
+}
+
 // Lista de líderes: ranking + bandera + nombre + valor (con sufijo opcional).
 function LeaderList({
   rows,
@@ -33,30 +62,24 @@ function LeaderList({
   suffix?: string;
   accent?: string;
 }) {
-  return (
-    <ul className="space-y-1">
-      {rows.map((r, i) => (
-        <li
-          key={r.tla}
-          className="flex items-center gap-2 text-sm py-1 border-b border-gray-100 last:border-0"
-        >
-          <span className="w-5 text-xs font-bold text-gray-400 tabular-nums text-right">
-            {i + 1}
-          </span>
-          <span className="flex-1 min-w-0">
-            <TeamLabel tla={r.tla} />
-          </span>
-          <span
-            className="font-bold tabular-nums"
-            style={{ color: accent }}
-          >
-            {r.value}
-            {suffix}
-          </span>
-        </li>
-      ))}
-    </ul>
-  );
+  const items = rows.map((r, i) => (
+    <li
+      key={r.tla}
+      className="flex items-center gap-2 text-sm py-1 border-b border-gray-100 last:border-0"
+    >
+      <span className="w-5 text-xs font-bold text-gray-400 tabular-nums text-right">
+        {i + 1}
+      </span>
+      <span className="flex-1 min-w-0">
+        <TeamLabel tla={r.tla} />
+      </span>
+      <span className="font-bold tabular-nums" style={{ color: accent }}>
+        {r.value}
+        {suffix}
+      </span>
+    </li>
+  ));
+  return <Expandable items={items} />;
 }
 
 export function DetailedStatsSections({
@@ -82,14 +105,30 @@ export function DetailedStatsSections({
   if (!data || data.teams.length === 0) return null;
 
   const { totals, teams } = data;
-  // Tabla de disparos: por equipo, ordenada por disparos al arco.
-  const shooting: TeamDetailedStats[] = [...teams]
-    .sort((a, b) => b.shotsOnTarget - a.shotsOnTarget)
-    .slice(0, 8);
-  // Disciplina por equipo (más tarjetas), con amarillas/rojas.
-  const discipline: TeamDetailedStats[] = [...teams]
-    .sort((a, b) => b.yellow + b.red * 3 - (a.yellow + a.red * 3))
-    .slice(0, 8);
+  // Tabla de disparos: por equipo, ordenada por disparos al arco (todos).
+  const shooting: TeamDetailedStats[] = [...teams].sort(
+    (a, b) => b.shotsOnTarget - a.shotsOnTarget,
+  );
+  // Disciplina por equipo (más tarjetas), con amarillas/rojas (todos).
+  const discipline: TeamDetailedStats[] = [...teams].sort(
+    (a, b) => b.yellow + b.red * 3 - (a.yellow + a.red * 3),
+  );
+  const disciplineItems = discipline.map((t, i) => (
+    <li
+      key={t.tla}
+      className="flex items-center gap-2 text-sm py-1 border-b border-gray-100 last:border-0"
+    >
+      <span className="w-5 text-xs font-bold text-gray-400 tabular-nums text-right">
+        {i + 1}
+      </span>
+      <span className="flex-1 min-w-0">
+        <TeamLabel tla={t.tla} />
+      </span>
+      <span className="text-xs font-bold tabular-nums text-gray-700">
+        🟨{t.yellow} 🟥{t.red}
+      </span>
+    </li>
+  ));
 
   return (
     <>
@@ -122,24 +161,7 @@ export function DetailedStatsSections({
             <p className="text-[11px] font-bold uppercase tracking-wide text-gray-500 mb-1.5">
               Más sancionados
             </p>
-            <ul className="space-y-1">
-              {discipline.map((t, i) => (
-                <li
-                  key={t.tla}
-                  className="flex items-center gap-2 text-sm py-1 border-b border-gray-100 last:border-0"
-                >
-                  <span className="w-5 text-xs font-bold text-gray-400 tabular-nums text-right">
-                    {i + 1}
-                  </span>
-                  <span className="flex-1 min-w-0">
-                    <TeamLabel tla={t.tla} />
-                  </span>
-                  <span className="text-xs font-bold tabular-nums text-gray-700">
-                    🟨{t.yellow} 🟥{t.red}
-                  </span>
-                </li>
-              ))}
-            </ul>
+            <Expandable items={disciplineItems} />
           </div>
           <div>
             <p className="text-[11px] font-bold uppercase tracking-wide text-gray-500 mb-1.5">
@@ -165,34 +187,7 @@ export function DetailedStatsSections({
           title="🎯 Disparos & puntería"
           subtitle="Disparos, al arco y % de efectividad"
         />
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-[11px] uppercase tracking-wide text-gray-500 text-right">
-                <th className="text-left font-semibold pb-1">Equipo</th>
-                <th className="font-semibold pb-1">Disp.</th>
-                <th className="font-semibold pb-1">Al arco</th>
-                <th className="font-semibold pb-1">%</th>
-              </tr>
-            </thead>
-            <tbody>
-              {shooting.map((t) => (
-                <tr key={t.tla} className="border-b border-gray-100 last:border-0">
-                  <td className="py-1">
-                    <TeamLabel tla={t.tla} />
-                  </td>
-                  <td className="text-right tabular-nums text-gray-700">{t.shots}</td>
-                  <td className="text-right tabular-nums font-bold text-gray-900">
-                    {t.shotsOnTarget}
-                  </td>
-                  <td className="text-right tabular-nums font-bold text-[var(--pmfu-cobalt)]">
-                    {t.shotAccuracy}%
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <ShootingTable rows={shooting} />
       </Card>
 
       {/* Juego brusco */}
@@ -223,6 +218,49 @@ export function DetailedStatsSections({
         </div>
       </Card>
     </>
+  );
+}
+
+function ShootingTable({ rows }: { rows: TeamDetailedStats[] }) {
+  const [expanded, setExpanded] = useState(false);
+  const shown = expanded ? rows : rows.slice(0, 8);
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="text-[11px] uppercase tracking-wide text-gray-500 text-right">
+            <th className="text-left font-semibold pb-1">Equipo</th>
+            <th className="font-semibold pb-1">Disp.</th>
+            <th className="font-semibold pb-1">Al arco</th>
+            <th className="font-semibold pb-1">%</th>
+          </tr>
+        </thead>
+        <tbody>
+          {shown.map((t) => (
+            <tr key={t.tla} className="border-b border-gray-100 last:border-0">
+              <td className="py-1">
+                <TeamLabel tla={t.tla} />
+              </td>
+              <td className="text-right tabular-nums text-gray-700">{t.shots}</td>
+              <td className="text-right tabular-nums font-bold text-gray-900">
+                {t.shotsOnTarget}
+              </td>
+              <td className="text-right tabular-nums font-bold text-[var(--pmfu-cobalt)]">
+                {t.shotAccuracy}%
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {rows.length > 8 && (
+        <button
+          onClick={() => setExpanded((v) => !v)}
+          className="w-full mt-2 text-xs font-bold text-[var(--pmfu-cobalt)] py-2 rounded-xl hover:bg-[var(--pmfu-cobalt)]/5 transition-colors"
+        >
+          {expanded ? "Ver menos ▲" : `Ver los ${rows.length} equipos ▼`}
+        </button>
+      )}
+    </div>
   );
 }
 
