@@ -32,6 +32,8 @@ import {
 import { useOpenfootballStats } from "@/hooks/useOpenfootballStats";
 import { useDetailedStats } from "@/hooks/useDetailedStats";
 import { DetailedStatsSections } from "@/components/stats/DetailedStatsSections";
+import { PowerRankingCard } from "@/components/stats/PowerRankingCard";
+import { computePowerRanking } from "@/lib/stats/powerRanking";
 import type { Scorer, GoalGems } from "@/lib/stats/openfootball";
 import type { TeamStanding } from "@/lib/standings/group-standings";
 import { cn } from "@/lib/utils";
@@ -70,6 +72,12 @@ export default function EstadisticasPage() {
   // Estadísticas detalladas (posesión, tarjetas, faltas, disparos, xG) vía
   // dataset abierto. Fire-and-forget: si no hay datos, las secciones se ocultan.
   const { data: detailed, loading: detailedLoading } = useDetailedStats();
+  // Power Ranking propio: combina resultados/gol/forma (datos internos) con
+  // calidad de juego (xG/posesión del dataset, si está disponible).
+  const powerRanking = useMemo(
+    () => computePowerRanking(totals, forms, detailed?.teams),
+    [totals, forms, detailed],
+  );
 
   if (loading) {
     return (
@@ -176,6 +184,8 @@ export default function EstadisticasPage() {
           {gems && gems.totalGoals > 0 && <GoalGemsBlock gems={gems} />}
 
           {/* Estadísticas detalladas (posesión, tarjetas, disparos, xG) */}
+          <PowerRankingCard rows={powerRanking} />
+
           <DetailedStatsSections data={detailed} loading={detailedLoading} />
 
           {/* 5. Ataque y defensa */}
