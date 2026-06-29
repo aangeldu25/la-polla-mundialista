@@ -16,7 +16,7 @@ import { useMyPredictions } from "@/hooks/usePredictions";
 import type { Match, MatchStage } from "@/types/domain";
 import { STAGE_LABEL_ES, STAGE_ORDER } from "@/lib/constants/stages";
 import { MatchCard } from "@/components/partidos/MatchCard";
-import { computeRealR32Projection } from "@/lib/stats/r32-projection";
+import { computeRealKnockoutProjection } from "@/lib/stats/r32-projection";
 import { useDerivedBracket } from "@/hooks/useDerivedBracket";
 import {
   evalStructureMatch,
@@ -224,9 +224,10 @@ export default function PartidosPage() {
     return matches.filter((m) => m.stage === filter);
   }, [matches, filter, predictions, nowTick]);
 
-  // Proyección real de clasificados a R32 según resultados de grupos.
+  // Proyección real de TODA la eliminatoria (R32 → Final), propagando los
+  // ganadores reales por las llaves.
   const r32Projection = useMemo(
-    () => computeRealR32Projection(matches),
+    () => computeRealKnockoutProjection(matches),
     [matches],
   );
 
@@ -377,9 +378,10 @@ export default function PartidosPage() {
                         ms.filter((x) => x.homeTeam.tla && x.awayTeam.tla),
                       );
                 return ms.map((m) => {
-                  // Solo proyectamos R32 (slots de grupos) sin equipo oficial aún
+                  // Proyectamos cualquier eliminatoria sin equipo oficial aún
+                  // (R32 desde grupos; Octavos+ desde los ganadores previos).
                   const proj =
-                    m.stage === "ROUND_OF_32" &&
+                    m.stage !== "GROUP" &&
                     m.matchNumber !== undefined &&
                     !(m.homeTeam.tla && m.awayTeam.tla)
                       ? r32Projection.get(m.matchNumber)

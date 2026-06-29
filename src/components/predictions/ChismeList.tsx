@@ -26,7 +26,7 @@ import {
   computeAllGroupStandings,
 } from "@/lib/standings/group-standings";
 import { computeDerivedBracket } from "@/lib/standings/knockout-cascade";
-import { computeRealR32Projection } from "@/lib/stats/r32-projection";
+import { computeRealKnockoutProjection } from "@/lib/stats/r32-projection";
 import { useActivePolla } from "@/components/polla/ActivePollaProvider";
 import { cn } from "@/lib/utils";
 
@@ -106,7 +106,7 @@ export function ChismeList({
   // que evaluamos el acierto de cada usuario: el oficial si el partido ya tiene
   // equipos, o la proyección real cuando los grupos ya cerraron (confirmada).
   const realProjection = useMemo(
-    () => (needsDerivation ? computeRealR32Projection(allMatches) : null),
+    () => (needsDerivation ? computeRealKnockoutProjection(allMatches) : null),
     [needsDerivation, allMatches],
   );
   const realSlot =

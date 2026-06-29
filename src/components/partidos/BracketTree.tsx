@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Flag } from "@/components/ui/Flag";
 import { TEAMS_BY_TLA } from "@/lib/constants/wc2026-teams";
-import { computeRealR32Projection } from "@/lib/stats/r32-projection";
+import { computeRealKnockoutProjection } from "@/lib/stats/r32-projection";
 import type { Match } from "@/types/domain";
 import { cn } from "@/lib/utils";
 
@@ -58,12 +58,15 @@ export function BracketTree({ matches }: { matches: Match[] }) {
     return m;
   }, [matches]);
 
-  const r32proj = useMemo(
-    () => computeRealR32Projection(matches),
+  // Proyección REAL de TODA la eliminatoria (R32 → Final), propagando los
+  // ganadores: confirmados (full color) los ya clasificados, provisionales
+  // (transparentes) los líderes de partidos en vivo o proyecciones por grupos.
+  const koProj = useMemo(
+    () => computeRealKnockoutProjection(matches),
     [matches],
   );
 
-  // Resuelve los equipos REALES de una llave: oficial > proyección (R32).
+  // Resuelve los equipos REALES de una llave: equipo oficial del doc > cascada.
   const resolve = useMemo(() => {
     return (matchNumber: number): SlotTeams => {
       const doc = byNumber.get(matchNumber);
@@ -73,23 +76,15 @@ export function BracketTree({ matches }: { matches: Match[] }) {
       const offAway = doc?.awayTeam.tla && doc.awayTeam.tla.length > 0
         ? doc.awayTeam.tla
         : null;
-      if (matchNumber >= 73 && matchNumber <= 88) {
-        const p = r32proj.get(matchNumber);
-        return {
-          homeTla: offHome ?? p?.homeTla ?? null,
-          awayTla: offAway ?? p?.awayTla ?? null,
-          homeConfirmed: offHome ? true : (p?.homeConfirmed ?? false),
-          awayConfirmed: offAway ? true : (p?.awayConfirmed ?? false),
-        };
-      }
+      const p = koProj.get(matchNumber);
       return {
-        homeTla: offHome,
-        awayTla: offAway,
-        homeConfirmed: !!offHome,
-        awayConfirmed: !!offAway,
+        homeTla: offHome ?? p?.homeTla ?? null,
+        awayTla: offAway ?? p?.awayTla ?? null,
+        homeConfirmed: offHome ? true : (p?.homeConfirmed ?? false),
+        awayConfirmed: offAway ? true : (p?.awayConfirmed ?? false),
       };
     };
-  }, [byNumber, r32proj]);
+  }, [byNumber, koProj]);
 
   return (
     <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden">

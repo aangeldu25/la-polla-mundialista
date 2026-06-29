@@ -17,7 +17,7 @@ import { savePrediction } from "@/lib/predictions/actions";
 import { fireConfetti, fireFireworks } from "@/lib/festive/confetti";
 import { TEAMS_BY_TLA } from "@/lib/constants/wc2026-teams";
 import { useDerivedBracket } from "@/hooks/useDerivedBracket";
-import { computeRealR32Projection } from "@/lib/stats/r32-projection";
+import { computeRealKnockoutProjection } from "@/lib/stats/r32-projection";
 import { BRACKET_BY_MATCH_NUMBER } from "@/lib/constants/wc2026-bracket";
 import { venueForMatch } from "@/lib/constants/wc2026-fixture-venues";
 import type { Match } from "@/types/domain";
@@ -39,9 +39,9 @@ export function PredictionModal({
 
   const myPrediction = match ? myPredictions.get(match.id) : undefined;
 
-  // Proyección REAL de clasificados a R32 (según resultados de grupos).
+  // Proyección REAL de toda la eliminatoria (grupos → ganadores en cascada).
   const realR32 = useMemo(
-    () => computeRealR32Projection(matches),
+    () => computeRealKnockoutProjection(matches),
     [matches],
   );
 

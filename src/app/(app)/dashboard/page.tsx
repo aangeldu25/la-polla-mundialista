@@ -14,7 +14,7 @@ import { Card } from "@/components/ui/Card";
 import { Flag } from "@/components/ui/Flag";
 import { MatchCard } from "@/components/partidos/MatchCard";
 import { PredictionModal } from "@/components/predictions/PredictionModal";
-import { computeRealR32Projection } from "@/lib/stats/r32-projection";
+import { computeRealKnockoutProjection } from "@/lib/stats/r32-projection";
 import { useDerivedBracket } from "@/hooks/useDerivedBracket";
 import {
   evalStructureMatch,
@@ -125,7 +125,7 @@ export default function DashboardPage() {
   // Proyección real de clasificados a R32 (para mostrar equipos en vez de
   // etiquetas en los partidos de hoy, igual que en la sección Partidos).
   const r32Projection = useMemo(
-    () => computeRealR32Projection(matches),
+    () => computeRealKnockoutProjection(matches),
     [matches],
   );
 
@@ -282,7 +282,7 @@ export default function DashboardPage() {
           <div className="grid md:grid-cols-2 gap-3">
             {todayMatches.map((m) => {
               const proj =
-                m.stage === "ROUND_OF_32" &&
+                m.stage !== "GROUP" &&
                 m.matchNumber !== undefined &&
                 !(m.homeTeam.tla && m.awayTeam.tla)
                   ? r32Projection.get(m.matchNumber)
