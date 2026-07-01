@@ -37,6 +37,7 @@ export type FDStatus =
   | "SCHEDULED"
   | "TIMED"
   | "IN_PLAY"
+  | "LIVE" // Football-Data también usa "LIVE" para partidos en curso
   | "PAUSED"
   | "FINISHED"
   | "POSTPONED"

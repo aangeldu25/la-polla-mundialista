@@ -40,6 +40,7 @@ function mapStatus(s: FDStatus): MatchStatus {
     case "TIMED":
       return "SCHEDULED";
     case "IN_PLAY":
+    case "LIVE":
     case "PAUSED":
       return "LIVE";
     case "FINISHED":
@@ -49,6 +50,9 @@ function mapStatus(s: FDStatus): MatchStatus {
     case "SUSPENDED":
     case "CANCELLED":
       return "CANCELLED";
+    default:
+      // Valor desconocido de Football-Data → tratar como programado (seguro).
+      return "SCHEDULED";
   }
 }
 
