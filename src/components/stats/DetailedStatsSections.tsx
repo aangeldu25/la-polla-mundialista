@@ -221,37 +221,41 @@ export function DetailedStatsSections({
   );
 }
 
+// Layout flex (no <table>) con columnas de ancho fijo, para que en móvil las
+// cifras queden alineadas y el nombre del equipo se trunque sin encimarse.
 function ShootingTable({ rows }: { rows: TeamDetailedStats[] }) {
   const [expanded, setExpanded] = useState(false);
   const shown = expanded ? rows : rows.slice(0, 8);
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="text-[11px] uppercase tracking-wide text-gray-500 text-right">
-            <th className="text-left font-semibold pb-1">Equipo</th>
-            <th className="font-semibold pb-1">Disp.</th>
-            <th className="font-semibold pb-1">Al arco</th>
-            <th className="font-semibold pb-1">%</th>
-          </tr>
-        </thead>
-        <tbody>
-          {shown.map((t) => (
-            <tr key={t.tla} className="border-b border-gray-100 last:border-0">
-              <td className="py-1">
-                <TeamLabel tla={t.tla} />
-              </td>
-              <td className="text-right tabular-nums text-gray-700">{t.shots}</td>
-              <td className="text-right tabular-nums font-bold text-gray-900">
-                {t.shotsOnTarget}
-              </td>
-              <td className="text-right tabular-nums font-bold text-[var(--pmfu-cobalt)]">
-                {t.shotAccuracy}%
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div>
+      {/* Encabezado de columnas */}
+      <div className="flex items-center gap-2 text-[10px] uppercase tracking-wide text-gray-400 font-semibold pb-1 border-b border-gray-200">
+        <span className="flex-1 min-w-0">Equipo</span>
+        <span className="w-10 text-right shrink-0">Disp.</span>
+        <span className="w-10 text-right shrink-0">Arco</span>
+        <span className="w-11 text-right shrink-0">%</span>
+      </div>
+      <ul>
+        {shown.map((t) => (
+          <li
+            key={t.tla}
+            className="flex items-center gap-2 text-sm py-1 border-b border-gray-100 last:border-0"
+          >
+            <span className="flex-1 min-w-0">
+              <TeamLabel tla={t.tla} />
+            </span>
+            <span className="w-10 text-right tabular-nums text-gray-700 shrink-0">
+              {t.shots}
+            </span>
+            <span className="w-10 text-right tabular-nums font-bold text-gray-900 shrink-0">
+              {t.shotsOnTarget}
+            </span>
+            <span className="w-11 text-right tabular-nums font-bold text-[var(--pmfu-cobalt)] shrink-0">
+              {t.shotAccuracy}%
+            </span>
+          </li>
+        ))}
+      </ul>
       {rows.length > 8 && (
         <button
           onClick={() => setExpanded((v) => !v)}
