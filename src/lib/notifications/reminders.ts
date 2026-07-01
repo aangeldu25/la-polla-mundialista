@@ -95,13 +95,21 @@ export async function sendKickoffReminders(): Promise<ReminderRunResult> {
     const usersToNotify = users.filter((u) => !predictedUids.has(u.uid));
 
     // Equipos: los del doc si ya están definidos; si es una eliminatoria con
-    // etiquetas, caemos a la proyección real (clasificados).
-    let homeTla = match.homeTeam.tla;
-    let awayTla = match.awayTeam.tla;
-    if ((!homeTla || !awayTla) && match.matchNumber !== undefined) {
-      const p = koProj.get(match.matchNumber);
-      if (!homeTla) homeTla = p?.homeTla ?? "";
-      if (!awayTla) awayTla = p?.awayTla ?? "";
+    // etiquetas, la proyección real pero SOLO si el clasificado está
+    // CONFIRMADO (grupo/ronda previa cerrada). Así evitamos enviar correos con
+    // equipos provisionales o cruces transitorios mal resueltos.
+    const p =
+      match.matchNumber !== undefined
+        ? koProj.get(match.matchNumber)
+        : undefined;
+    const homeTla =
+      match.homeTeam.tla || (p?.homeConfirmed ? (p.homeTla ?? "") : "");
+    const awayTla =
+      match.awayTeam.tla || (p?.awayConfirmed ? (p.awayTla ?? "") : "");
+    if (match.stage !== "GROUP" && (!homeTla || !awayTla)) {
+      // Eliminatoria sin equipos confirmados aún → no notificar todavía
+      // (se reintenta en el próximo tick, sin marcar como notificado).
+      continue;
     }
     const home = TEAMS_BY_TLA[homeTla];
     const away = TEAMS_BY_TLA[awayTla];

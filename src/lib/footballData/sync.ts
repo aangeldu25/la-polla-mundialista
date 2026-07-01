@@ -399,10 +399,14 @@ export async function syncFixture(): Promise<SyncResult> {
         next.liveMinute = prev.liveMinute ?? null;
       }
 
-      // Preservar la marca de puntos calculados (set() reemplaza el doc)
+      // Preservar marcas que viven fuera del tipo Match (set() reemplaza el
+      // doc): puntos calculados y "recordatorio ya enviado".
       batch.set(ref, {
         ...next,
         pointsCalculated: prev?.pointsCalculated ?? false,
+        kickoffNotified:
+          (prev as { kickoffNotified?: boolean } | undefined)
+            ?.kickoffNotified ?? false,
       });
       if (prev) updated++;
       else created++;
