@@ -172,13 +172,14 @@ export async function syncFixture(): Promise<SyncResult> {
       a.id - b.id,
   );
   const koNumberByTime = new Map<string, number>();
+  const koTimesArr: Array<{ num: number; ms: number }> = [];
   for (const [num, t] of Object.entries(KO_OFFICIAL_TIMES)) {
     koNumberByTime.set(t, Number(num));
+    koTimesArr.push({ num: Number(num), ms: new Date(t).getTime() });
   }
   const matchNumbers = new Map<number, number>();
   let groupCounter = 1;
-  // Contadores de respaldo por fase: solo se usan si el kickoff de un partido
-  // de eliminatoria no coincide con la tabla oficial (cambio de horario, etc.).
+  // Contadores de respaldo por fase: último recurso si no hay match ni cercano.
   const koFallback: Record<string, number> = {
     ROUND_OF_32: 73,
     ROUND_OF_16: 89,
@@ -187,13 +188,47 @@ export async function syncFixture(): Promise<SyncResult> {
     THIRD_PLACE: 103,
     FINAL: 104,
   };
+  // Aplazamientos: si un partido se corre de hora, su utcDate deja de coincidir
+  // EXACTO con la tabla oficial. Hacemos dos pases: 1) asignamos los que
+  // coinciden exacto (reservan su número); 2) los aplazados toman el número
+  // oficial cuyo kickoff quede más cercano (dentro de tolerancia), sin robarle
+  // el suyo a un partido que sí coincidió.
+  const usedKo = new Set<number>();
+  const KO_TOLERANCE_MS = 3 * 3600_000;
+  const postponedKo: Array<{ id: number; stage: MatchStage }> = [];
   for (const m of sorted) {
     const stage = mapStage(m.stage);
     if (stage === "GROUP") {
       matchNumbers.set(m.id, groupCounter++);
-    } else if (stage) {
-      const official = koNumberByTime.get(m.utcDate);
-      matchNumbers.set(m.id, official ?? koFallback[stage]++);
+      continue;
+    }
+    if (!stage) continue;
+    const exact = koNumberByTime.get(m.utcDate);
+    if (exact !== undefined && !usedKo.has(exact)) {
+      matchNumbers.set(m.id, exact);
+      usedKo.add(exact);
+    } else {
+      postponedKo.push({ id: m.id, stage });
+    }
+  }
+  for (const { id, stage } of postponedKo) {
+    const fd = data.matches.find((x) => x.id === id);
+    const ms = fd ? new Date(fd.utcDate).getTime() : NaN;
+    let bestNum: number | undefined;
+    let bestDiff = Infinity;
+    for (const e of koTimesArr) {
+      if (usedKo.has(e.num)) continue;
+      const d = Math.abs(e.ms - ms);
+      if (d < bestDiff) {
+        bestDiff = d;
+        bestNum = e.num;
+      }
+    }
+    if (bestNum !== undefined && bestDiff <= KO_TOLERANCE_MS) {
+      matchNumbers.set(id, bestNum);
+      usedKo.add(bestNum);
+    } else {
+      matchNumbers.set(id, koFallback[stage]++);
     }
   }
 

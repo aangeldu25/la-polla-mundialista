@@ -61,8 +61,10 @@ export interface OverlayResult {
 
 export async function overlayLiveScores(): Promise<OverlayResult> {
   const now = Date.now();
-  // Ventana: partidos cuyo kickoff fue hace <6h o es en <30min
-  const fromMs = now - 6 * 3600_000;
+  // Ventana: partidos cuyo kickoff fue hace <9h o es en <30min. El margen
+  // holgado hacia atrás cubre aplazamientos (un partido corrido por clima que
+  // aún se está jugando varias horas después de su hora original).
+  const fromMs = now - 9 * 3600_000;
   const toMs = now + 30 * 60_000;
 
   // 1) Candidatos en Firestore: partidos en ventana que aún necesitan datos
@@ -207,17 +209,34 @@ function findLiveScore(m: Match, scores: LiveScore[]): LiveScore | null {
   const mAway = canonTla(m.awayTeam.tla || null);
   const mHomeName = canonName(m.homeTeam.name);
   const mAwayName = canonName(m.awayTeam.name);
+  const mTime = new Date(m.utcDate).getTime();
+  // Ventana amplia (±12h) en vez de exigir kickoff EXACTO: así toleramos
+  // aplazamientos (p.ej. un partido corrido una hora por mal tiempo). Un mismo
+  // equipo no juega dos veces en ~12h, así que emparejar por equipos dentro de
+  // la ventana es seguro y evita perder el seguimiento en vivo.
+  const WINDOW_MS = 12 * 3600_000;
 
+  let best: LiveScore | null = null;
+  let bestRank = -1;
   for (const s of scores) {
-    if (s.utcDate !== m.utcDate) continue;
+    const diff = Math.abs(new Date(s.utcDate).getTime() - mTime);
+    if (!Number.isFinite(diff) || diff > WINDOW_MS) continue;
     const sHome = canonTla(s.homeTla);
     const sAway = canonTla(s.awayTla);
-    // Match por TLA (FIFA) — basta un lado para tolerar TBD del otro
-    if (mHome && sHome && mHome === sHome) return s;
-    if (mAway && sAway && mAway === sAway) return s;
-    // Match por nombre (API-Football)
-    if (mHomeName && canonName(s.homeName) === mHomeName) return s;
-    if (mAwayName && canonName(s.awayName) === mAwayName) return s;
+    const homeHit =
+      (!!mHome && !!sHome && mHome === sHome) ||
+      (!!mHomeName && canonName(s.homeName) === mHomeName);
+    const awayHit =
+      (!!mAway && !!sAway && mAway === sAway) ||
+      (!!mAwayName && canonName(s.awayName) === mAwayName);
+    if (!homeHit && !awayHit) continue;
+    // Preferir coincidencia de AMBOS lados; a igualdad, el más cercano en tiempo.
+    const strength = (homeHit ? 1 : 0) + (awayHit ? 1 : 0);
+    const rank = strength * 1e13 - diff;
+    if (rank > bestRank) {
+      bestRank = rank;
+      best = s;
+    }
   }
-  return null;
+  return best;
 }
